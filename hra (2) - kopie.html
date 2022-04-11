@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+      <title>Babylon Template</title>
+
+      <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>  
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="cannons.js"></script>
+        <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+        
+      
+
+
+
+   </head>
+
+   <body>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas> //touch-action="none" for best results from PEP
+
+    <script>
+    //https://playground.babylonjs.com/#DU4FPJ#3
+    //https://playground.babylonjs.com/#8ZNVGR
+    //https://playground.babylonjs.com/#IQN716#9
+    //https://playground.babylonjs.com/#2BLI9T#368
+
+
+            var canvas = document.getElementById("renderCanvas"); // Get the canvas element 
+
+            var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+
+
+            /******* Add the create scene function ******/
+           
+var createScene = function () {
+
+     BABYLON.Mesh.prototype.increaseFacets = function(pps) { //pps points per side        
+    var _gaps = pps+1;
+    var _n = _gaps + 1;
+    var _fvs =[];
+    for(var _i=0; _i<_n; _i++) {
+        _fvs[_i] = [];
+    }    
+    var _A,_B;
+    var _d ={x:0,y:0,z:0};
+    var _u ={x:0,y:0};
+    var _indices = [];
+    var _vertexIndex = [];
+    var _side = [];
+	var _l; //holds lengths
+    var _uvs = this.getVerticesData(BABYLON.VertexBuffer.UVKind);
+    var _meshIndices = this.getIndices();
+    var _positions = this.getVerticesData(BABYLON.VertexBuffer.PositionKind);    
+    var _normals =[];    
+
+    for(var _i = 0; _i<_meshIndices.length; _i+=3) {
+        _vertexIndex[0] = _meshIndices[_i];
+        _vertexIndex[1] = _meshIndices[_i + 1];
+        _vertexIndex[2] = _meshIndices[_i + 2];        
+        for(var _j = 0; _j<3; _j++) {
+            _A = _vertexIndex[_j];
+            _B = _vertexIndex[(_j+1)%3];        
+            if(_side[_A] === undefined  && _side[_B] ===  undefined) {            
+                _side[_A] = [];
+                _side[_B] = [];            
+            }
+            else {
+                if(_side[_A] === undefined) {                    
+                    _side[_A] = [];
+                }
+                if(_side[_B] === undefined) {                    
+                    _side[_B] = [];                                
+                }
+            }
+            if(_side[_A][_B]  === undefined  && _side[_B][_A] === undefined) {            
+                _side[_A][_B] = [];
+                _d.x = (_positions[3 * _B] - _positions[3 * _A])/_gaps;
+                _d.y = (_positions[3 * _B + 1] - _positions[3 * _A + 1])/_gaps;
+                _d.z = (_positions[3 * _B + 2] - _positions[3 * _A + 2])/_gaps;
+                _u.x = (_uvs[2*_B] - _uvs[2*_A])/_gaps;
+                _u.y = (_uvs[2*_B + 1] - _uvs[2*_A + 1])/_gaps;
+                _side[_A][_B].push(_A);                
+                for(var _k=1; _k<_gaps; _k++) {                
+                    _side[_A][_B].push(_positions.length/3);                
+                    _positions.push(_positions[3 * _A] + _k*_d.x, _positions[3 * _A + 1] + _k*_d.y, _positions[3 * _A + 2] + _k*_d.z);
+                    _uvs.push(_uvs[2*_A] + _k*_u.x, _uvs[2*_A + 1] + _k*_u.y);
+                }                
+                _side[_A][_B].push(_B);
+                _side[_B][_A]=[];
+                _l = _side[_A][_B].length;
+                for(var _a=0; _a<_l; _a++) {
+                    _side[_B][_A][_a] = _side[_A][_B][_l-1-_a];
+                }
+            }
+            else {
+                if(_side[_A][_B] === undefined) {            
+                    _side[_A][_B]=[];
+                    _l = _side[_B][_A].length;
+                    for(var _a=0; _a<_l; _a++) {
+                        _side[_A][_B][_a] = _side[_B][_A][_l-1-_a];
+                    }
+                }
+                if(_side[_B][_A] === undefined) {            
+                    _side[_B][_A]=[];                
+                    _l = _side[_A][_B].length;
+                    for(var _a=0; _a<_l; _a++) {
+                        _side[_B][_A][_a] = _side[_A][_B][_l-1-_a];
+                    }
+                }
+            }                    
+        }    
+        _fvs[0][0] = _meshIndices[_i];
+        _fvs[1][0] = _side[_meshIndices[_i]][_meshIndices[_i + 1]][1];
+        _fvs[1][1] = _side[_meshIndices[_i]][_meshIndices[_i + 2]][1];        
+        for(var _k = 2; _k<_gaps; _k++) {
+            _fvs[_k][0] = _side[_meshIndices[_i]][_meshIndices[_i + 1]][_k];
+            _fvs[_k][_k] = _side[_meshIndices[_i]][_meshIndices[_i + 2]][_k];        
+            _d.x = (_positions[3 * _fvs[_k][_k]] - _positions[3 * _fvs[_k][0]])/_k;
+            _d.y = (_positions[3 * _fvs[_k][_k] + 1] - _positions[3 * _fvs[_k][0] + 1])/_k;
+            _d.z = (_positions[3 * _fvs[_k][_k] + 2] - _positions[3 * _fvs[_k][0] + 2])/_k;
+            _u.x = (_uvs[2*_fvs[_k][_k]] - _uvs[2*_fvs[_k][0]])/_k;
+            _u.y = (_uvs[2*_fvs[_k][_k] + 1] - _uvs[2*_fvs[_k][0] + 1])/_k;
+            for(var _j = 1; _j<_k; _j++) {                
+                _fvs[_k][_j] = _positions.length/3;                
+                _positions.push(_positions[3 * _fvs[_k][0]] + _j*_d.x, _positions[3 * _fvs[_k][0] + 1] + _j*_d.y, _positions[3 * _fvs[_k][0] + 2] + _j*_d.z);
+                _uvs.push(_uvs[2*_fvs[_k][0]] + _j*_u.x, _uvs[2*_fvs[_k][0] + 1] + _j*_u.y);
+            }        
+        }
+        _fvs[_gaps] = _side[_meshIndices[_i + 1]][_meshIndices[_i + 2]];
+
+        _indices.push(_fvs[0][0],_fvs[1][0],_fvs[1][1]);
+        for(var _k = 1; _k<_gaps; _k++) {
+            for(var _j = 0; _j<_k; _j++) {            
+                _indices.push(_fvs[_k][_j],_fvs[_k+1][_j],_fvs[_k+1][_j+1]);
+                _indices.push(_fvs[_k][_j],_fvs[_k+1][_j+1],_fvs[_k][_j+1]);
+            }        
+            _indices.push(_fvs[_k][_j],_fvs[_k+1][_j],_fvs[_k+1][_j+1]);
+        }
+
+    }                            
+
+    var vertexData = new BABYLON.VertexData();
+    vertexData.positions = _positions;
+    vertexData.indices = _indices;
+    vertexData.uvs = _uvs;
+
+    BABYLON.VertexData.ComputeNormals(_positions, _indices, _normals);
+    vertexData.normals = _normals;
+	
+    vertexData.applyToMesh(this);
+
+    }
+
+    engine.enableOfflineSupport = false;
+
+    // Scene and Camera
+    var scene = new BABYLON.Scene(engine);
+    
+
+    var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
+    scene.activeCamera = camera1;
+    scene.activeCamera.attachControl(canvas, true);
+    camera1.lowerRadiusLimit = 2;
+    camera1.upperRadiusLimit = 10;
+    camera1.wheelDeltaPercentage = 0.01;
+
+    // Lights
+    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    light.intensity = 0.6;
+    light.specular = BABYLON.Color3.Black();
+
+    var light2 = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0, -0.5, -1.0), scene);
+    light2.position = new BABYLON.Vector3(0, 5, 5);
+
+
+    // Ground
+  /*  var ground = BABYLON.MeshBuilder.CreateGround("ground", { height: 80, width: 80, subdivisions: 4 }, scene);
+    var groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+    groundMaterial.diffuseColor  = new BABYLON.Color3(0, 0, 1);
+    ground.material = groundMaterial;  */
+
+    // Keyboard events
+    var inputMap = {};
+    scene.actionManager = new BABYLON.ActionManager(scene);
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+
+
+    // Load hero character
+ //   BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb", scene, function (newMeshes, particleSystems, skeletons, animationGroups) {
+        //var hero = newMeshes[0];  
+        
+        
+        var ground = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground.rotation = new BABYLON.Vector3(0, 0, 0);        ground.rotation.x = 180 * Math.PI / 180 ;
+         ground.position.y = -12;
+        
+        var ground1 = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground1.rotation = new BABYLON.Vector3(0, 0, 0);    
+       
+        
+        var ground2 = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground2.rotation = new BABYLON.Vector3(0, 0, 0);   ground2.rotation.x = 90 * Math.PI / 180 ;
+          ground2.position.z = 6;         ground2.position.y = -6;
+        
+        var ground3 = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground3.rotation = new BABYLON.Vector3(0, 0, 0);   ground3.rotation.x = -90 * Math.PI / 180 ;
+           ground3.position.z = -6;         ground3.position.y = -6;
+        
+        var ground4 = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground4.rotation = new BABYLON.Vector3(0, 0, 0);   ground4.rotation.z = -90 * Math.PI / 180 ;
+        ground4.position.x = 6;            ground4.position.y = -6;
+        
+        var ground5 = BABYLON.MeshBuilder.CreateBox("ground", {width: 12, height: 0.5, depth: 12}, scene);
+        ground5.rotation = new BABYLON.Vector3(0, 0, 0);   ground5.rotation.z = 90 * Math.PI / 180 ;
+        ground5.position.x = -6;            ground5.position.y = -6;
+        
+        ground.visibility = 0.2;
+        ground1.visibility = 0.2;
+        ground2.visibility = 0.2;
+        ground3.visibility = 0.2;
+        ground4.visibility = 0.2;
+        ground5.visibility = 0.2;   
+        
+        
+       var hero = new BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:0.25, capSubdivisions: 6, subdivisions:6, tessellation:36, height:2, orientation:BABYLON.Vector3.Forward()});
+       hero.position.x = 12;
+    //   hero.position.y = 6;
+    //   hero.position.z = 6;
+       var herodMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+       herodMaterial.diffuseColor  = new BABYLON.Color3(1, 0, 0);
+       hero.material = herodMaterial; 
+
+        hero.visibility = 0.2;
+
+
+        //Lock camera on the character 
+        camera1.target = hero;
+
+        //Hero character variables 
+        var heroSpeed = 0;
+        var heroSpeedBackwards = 0.1;
+        var heroRotationSpeed = 0.01;
+
+        var vektor = new BABYLON.Vector3(0, 1, 0);
+        var vektor1 = new BABYLON.Vector3(0, -1, 0); 
+        
+        scene.onPointerObservable.add((pointerInfo) => {
+		switch (pointerInfo.type) {
+			case BABYLON.PointerEventTypes.POINTERWHEEL:
+                if(pointerInfo.event.deltaY < 0)
+                {
+                    if(heroSpeed < 0.2)
+                    {
+                         heroSpeed = heroSpeed+0.1
+                    }
+                }
+                else if (pointerInfo.event.deltaY > 0)
+                {
+                    if(heroSpeed > -0.2)
+                    {
+                         heroSpeed = heroSpeed - 0.1
+                    }
+                }
+            break;
+        }
+    });
+         let rychlosti = [Math.random() / 5];
+         for (let i = 0; i < 500; i++) {
+              rychlosti.push(Math.random() / 5); 
+        } 
+        
+        let index_detekce = 0;   
+        
+        //Rendering loop (executed for everyframe)
+        scene.onBeforeRenderObservable.add(() => {   
+            let x = 0;
+           // alert(rychlosti[x]);
+     
+            balls.forEach(ball => {
+              //  ball.moveWithCollisions(ball.forward.scaleInPlace(rychlosti[x]));   x = x + 1;
+            });          
+                 
+            hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));     //xxxxxxxxxxxxxx
+            var keydown = false;
+            //Manage the movements of the character (e.g. position, direction)
+            if (inputMap["r"]) {  
+               // hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));  
+               if(heroSpeed == 0.1)
+               {
+                    heroSpeed = 0.5;
+               }
+               else
+               {
+                  heroSpeed = 0.1;
+               } 
+                keydown = true;               /*zmenit vector*/
+            } 
+            if (inputMap["e"]) {
+                hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
+              // hero.rotate(new BABYLON.Vector3(-1, 0, 0),  0.01); 
+              //  hero.rotate(BABYLON.Vector3.Left(), heroRotationSpeed); 
+                keydown = true;               /*zmenit vector*/
+            }  
+            if (inputMap["q"]) {
+                hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeed));  
+            //  hero.rotate(BABYLON.Vector3.Left(), -heroRotationSpeed); 
+           // hero.rotate(new BABYLON.Vector3(1, 0, 0),  0.01);    
+                keydown = true;
+            }
+            if (inputMap["a"]) {
+                hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
+           //  hero.rotate(new BABYLON.Vector3(0, -1, 0),  0.01); 
+           //  hero.moveWithCollisions(hero.right.scaleInPlace(-heroSpeed));
+                keydown = true;
+            }
+            if (inputMap["d"]) {
+                hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+            // hero.rotate(new BABYLON.Vector3(0, 1, 0),  0.01); 
+           // hero.moveWithCollisions(hero.right.scaleInPlace(heroSpeed));
+                keydown = true;
+            }
+            if (inputMap["s"]) {
+             //   hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+            // hero.rotate(new BABYLON.Vector3(0, 1, 0),  0.01); 
+            hero.moveWithCollisions(hero.up.scaleInPlace(-heroSpeedBackwards));
+                keydown = true;
+            }
+            if (inputMap["w"]) {
+             //   hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+            // hero.rotate(new BABYLON.Vector3(0, 1, 0),  0.01); 
+            hero.moveWithCollisions(hero.up.scaleInPlace(heroSpeedBackwards));
+                keydown = true;
+            }
+                   
+            let aaa = balls.length-1;
+            let xx = 0; 
+            if (inputMap["1"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.right.scaleInPlace(-rychlosti[xx]));  xx = xx + 1; xx = xx % 500;
+                }); 
+                keydown = true;
+            }
+            if (inputMap["3"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.right.scaleInPlace(rychlosti[xx]));  xx = xx + 1;
+                });
+                keydown = true;
+            }
+            if (inputMap["4"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.forward.scaleInPlace(rychlosti[xx]));  xx = xx + 1;
+                });
+                keydown = true;
+            }
+            if (inputMap["6"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.forward.scaleInPlace(-rychlosti[xx]));  xx = xx + 1;
+                });
+                keydown = true;
+            }
+            if (inputMap["5"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.up.scaleInPlace(rychlosti[xx]));  xx = xx + 1;
+                });
+                keydown = true;
+            }
+            if (inputMap["2"]) {
+                balls.forEach(ball => {
+                ball.moveWithCollisions(ball.up.scaleInPlace(-rychlosti[xx]));  xx = xx + 1;
+                });
+                keydown = true;
+            }
+            
+            //xxxxxxxxxxxxxx
+            if (inputMap["g"]) {
+                index_detekce = 0;
+                keydown = true;
+            }
+            if (inputMap["h"]) {
+                index_detekce = 1;
+                keydown = true;
+            }
+            if (inputMap["j"]) {
+                index_detekce = 2;
+                keydown = true;
+            }
+            if (inputMap["k"]) {
+                index_detekce = 3;
+                keydown = true;
+            }
+            if (inputMap["l"]) {
+                index_detekce = 4;
+                keydown = true;
+            }
+            //xxxxxxxxxxxxxxxx
+            
+         ground3.updateFacetData();  
+        console.log(ground3.facetNb); 
+        hero.updateFacetData();
+        console.log(hero.facetNb); 
+        var pos = hero.getFacetPosition(50);
+        console.log(pos["x"]);
+        
+        var vzdalenost0 = -1;
+        
+        if(index_detekce == 0)  //g
+        {
+            if (hero.intersectsMesh(ground3, false)) {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            } 
+            else {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            }
+        
+        }
+        else if(index_detekce == 1)    //h
+        {   
+            
+            for(let x = 0; x < ground3.facetNb; x++)
+            {
+                for(let y = 0; y < hero.facetNb; y++)
+                {
+                    var poshero = hero.getFacetPosition(y);
+                    var posground = ground3.getFacetPosition(x);
+                    var dX = poshero["x"] - posground["x"];
+                    var dY = poshero["y"] - posground["y"];
+                    var dZ = poshero["z"] - posground["z"]; 
+                    var vzdalenost = Math.sqrt(dX * dX + dY * dY + dZ * dZ);
+                    if(vzdalenost0 == -1){vzdalenost0 = vzdalenost;} 
+                    if(vzdalenost < vzdalenost0)
+                    {
+                    vzdalenost0 = vzdalenost;
+                    }
+                }
+            } 
+        
+            console.log(vzdalenost0); 
+        
+            if (vzdalenost0 < 5)
+            {
+                if (hero.intersectsMesh(ground3, false)) {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                } 
+                else {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+                }
+        
+            }   
+        }
+        else if(index_detekce == 2)    // j
+        {   
+            var posx = hero.position.x - ground1.position.x;
+            var posy = hero.position.y - ground1.position.y;
+            var posz = hero.position.z - ground1.position.z;
+            
+            if(posx<0){posx = posx*-1}
+            if(posy<0){posy = posy*-1}
+            if(posz<0){posz = posz*-1}
+            
+            var rozmerx = hero.getBoundingInfo().maximum["x"] + ground1.getBoundingInfo().maximum["x"];
+            var rozmery = hero.getBoundingInfo().maximum["y"] + ground1.getBoundingInfo().maximum["y"];
+            var rozmerz = hero.getBoundingInfo().maximum["z"] + ground1.getBoundingInfo().maximum["z"];
+            
+            console.log("pos "+ posx + " "+ posy + " "+ posz + " ");
+            console.log("rozmer "+ rozmerx + " "+ rozmery + " "+ rozmerz + " ");
+            
+            if (!(posx <= rozmerx && posy <= rozmery && posz <= rozmerz)) {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            } 
+            else {
+                hero.material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            }        
+        }
+        else if(index_detekce == 3)  //k
+        {  
+            var indexg, indexh;
+            for(let x = 0; x < ground3.facetNb; x++)
+            {
+                for(let y = 0; y < hero.facetNb; y++)
+                {
+                    var poshero = hero.getFacetPosition(y);
+                    var posground = ground3.getFacetPosition(x);
+                    var dX = poshero["x"] - posground["x"];
+                    var dY = poshero["y"] - posground["y"];
+                    var dZ = poshero["z"] - posground["z"]; 
+                    var vzdalenost = Math.sqrt(dX * dX + dY * dY + dZ * dZ);
+                    if(vzdalenost0 == -1){vzdalenost0 = vzdalenost;} 
+                    if(vzdalenost < vzdalenost0)
+                    {
+                        vzdalenost0 = vzdalenost;
+                        indexg = x;
+                        indexh = y;
+                    }
+                }
+            } 
+            
+       /*     for(let x = hero.getFacetPosition(indexh)["x"]-5; x < hero.getFacetPosition(indexh)["x"]+5; x = x+0.1)
+            {
+                for(let y = hero.getFacetPosition(indexh)["y"]-5; x < hero.getFacetPosition(indexh)["y"]+5; y = y+0.1)
+                {
+                    for(let z = hero.getFacetPosition(indexh)["z"]-5; x < hero.getFacetPosition(indexh)["z"]+5; z = z+0.1)
+                    {
+                    
+                        var indexes = hero.getFacetsAtLocalCoordinates(x, y, z);
+                        var indexess = ground3.getFacetsAtLocalCoordinates(x, y, z);    // returns an array containing the facet indexes
+                        if (indexes != null && indexess != null) {
+                            hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);      // the world position of the first facet in the block
+                        }  
+                
+                    }
+                
+                } 
+                
+            }   */
+         
+          /*  
+
+        var pos = hero.getFacetPosition(50);
+        console.log(pos["x"]);
+
+        pokud se v souradnici nachazi nejaky facet obou meshu pak uspech
+
+        pak to zkusit pro druhy mesh pro jistotu */
+
+        }
+        else if(index_detekce == 4)  //l
+        {
+                     //veymu polohu a velikost meshe, potom se ptam podle souradnic yda tadz je nejakz spolecnz facet ykouma se pouye strana ke ktere je priklonena facet druheho meshe
+        
+        
+        
+           //royeli se na maly partion pak se yeptam jestli v tom partion nejsou tz samz partion udela se partion potom se yeptam na 
+        } //ykusit to s 2 nejbliysimi facet
+         
+
+        });
+     //23 strana   
+  //    ground2.setBoundingInfo(new BABYLON.BoundingInfo(min, max)); 
+    let rozloha = ground3.getBoundingInfo().maximum["x"]*ground3.getBoundingInfo().maximum["y"]*ground3.getBoundingInfo().maximum["z"]*8;
+    var pocetface = ground3.getIndices();
+    pocetface = pocetface.length/3;
+
+    console.log("royloha "+ rozloha + " facentb "+pocetface);
+    while(rozloha*6 > pocetface)
+    {     
+         ground3.increaseFacets(1);
+        pocetface = ground3.getIndices();
+        pocetface = pocetface.length/3;
+         console.log(" facentb "+pocetface );      
+    } 
+    
+    
+      console.log("aaa "+ground2.getBoundingInfo().maximum["y"]);
+
+    let ball = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+    let sign = Math.random() < 0.5;
+        ball.position.y = Math.random() * (sign ? -11.2 : -1);
+        sign = Math.random() < 0.5;
+        ball.position.x = Math.random() * (sign ? 1 : -1)*5.2;
+        sign = Math.random() < 0.5;
+        ball.position.z = Math.random() * (sign ? 1 : -1)*5.2;
+        ball.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        
+    let balls = [ball];
+      /*
+
+     for(let i=0; i < 2; i++ )
+     {
+        let mic = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+        let sign = Math.random() < 0.5;
+        mic.position.y = Math.random() * (sign ? -11.2 : -1);
+        sign = Math.random() < 0.5;
+        mic.position.x = Math.random() * (sign ? 1 : -1)*5.2;
+        sign = Math.random() < 0.5;
+        mic.position.z = Math.random() * (sign ? 1 : -1)*5.2;
+        mic.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        balls.push(mic);  
+     }    */
+        
+          /*
+       let c = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+    c.position.y = -11.2;
+        c.position.x = -5.2;
+        c.position.z = -5.2;
+        balls.push(c); 
+        
+                
+        c = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+    c.position.y = -1;
+        c.position.x = -5.2;
+        c.position.z = -5.2;
+        c.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        balls.push(c);   
+        
+        c = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+    c.position.y = -1;
+        c.position.x = 5.2;
+        c.position.z = 5.2;
+        c.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        balls.push(c);
+        
+        c = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);
+    c.position.y = -11.2;
+        c.position.x = 5.2;
+        c.position.z = 5.2;
+        c.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        balls.push(c);   */ 
+        
+
+    let cannon = true;
+    let forceFactor = cannon ? 1 : 1500; 
+     
+     /*scene.enablePhysics(undefined, (!cannon ? new BABYLON.OimoJSPlugin(100) : new BABYLON.CannonJSPlugin(true, 100)));
+    
+      var physicsEngine = scene.getPhysicsEngine();
+      physicsEngine.setGravity(new BABYLON.Vector3(0, 0, 0)); */
+      
+      var gravityVector = new BABYLON.Vector3(0, 0, 0);
+    var physicsPlugin = new BABYLON.CannonJSPlugin(); 
+    scene.enablePhysics(gravityVector, physicsPlugin);
+     scene.broadphase = new CANNON.GridBroadphase(scene); 
+     
+     /*var world = physicsPlugin.world
+    world.broadphase = new CANNON.SAPBroadphase(world)
+	scene.enablePhysics(gravityVector, physicsPlugin);*/  
+  //  physicsEngine.setGravity(new BABYLON.Vector3(0, 0, 0));
+    
+  //  hero.physicsImpostor = new BABYLON.PhysicsImpostor(hero, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 10, friction: 0.9, restitution: 1.5});
+    
+   // ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, {mass: 0});
+      
+ balls.forEach(ball => {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 1});
+    });
+    
+    ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+    ground1.physicsImpostor = new BABYLON.PhysicsImpostor(ground1, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+    ground2.physicsImpostor = new BABYLON.PhysicsImpostor(ground2, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+    ground3.physicsImpostor = new BABYLON.PhysicsImpostor(ground3, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+    ground4.physicsImpostor = new BABYLON.PhysicsImpostor(ground4, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+    ground5.physicsImpostor = new BABYLON.PhysicsImpostor(ground5, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+      
+    //yyyyyyyyyyyyyyyyyy
+    
+    let index_zvetseni = 0;
+  
+    var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+    var panel = new BABYLON.GUI.StackPanel();
+    panel.width = "220px";
+    panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+    advancedTexture.addControl(panel);
+
+    var header = new BABYLON.GUI.TextBlock();
+    header.text = "Velikost kostky: 0";
+    header.height = "30px";
+    header.color = "white";
+    panel.addControl(header); 
+
+    var slider = new BABYLON.GUI.Slider();
+    slider.minimum = 0;
+    slider.maximum = 10;
+    slider.value = 0;
+    slider.height = "20px";
+    slider.width = "200px";
+    slider.onValueChangedObservable.add(function(value) {
+        header.text = "Velikost kostky: " + (value | 0) ;
+        index_zvetseni = value/12*2+1;
+     
+            let nahrada = value;    nahrada = nahrada/12*2+1;
+            ground.position.y = -value-12;   ground.scaling.x = nahrada;   ground.scaling.z = nahrada;
+            ground1.position.y = value;     ground1.scaling.x = nahrada;   ground1.scaling.z = nahrada;
+            
+            ground2.position.z = value+6;   ground2.scaling.x = nahrada;   ground2.scaling.z = nahrada;
+            ground3.position.z = -value-6;  ground3.scaling.x = nahrada;   ground3.scaling.z = nahrada;
+            
+            ground4.position.x = value+6;   ground4.scaling.x = nahrada;   ground4.scaling.z = nahrada;
+            ground5.position.x = -value-6;  ground5.scaling.x = nahrada;   ground5.scaling.z = nahrada; 
+        
+    });
+    panel.addControl(slider);
+    
+    header1 = new BABYLON.GUI.TextBlock();
+    header1.text = "Pocet kouli: 0";
+    header1.height = "30px";
+    header1.color = "white";
+    panel.addControl(header1);   
+    
+    slider = new BABYLON.GUI.Slider();
+    slider.minimum = 0;
+    slider.maximum = 100;
+    slider.value = 0;
+    slider.height = "20px";
+    slider.width = "200px";
+    slider.onValueChangedObservable.add(function(value) {
+        header1.text = "Pocet kouli: " + balls.length ;
+        
+            for(let i=0; i < 2; i++ )
+     {
+        let mic = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 1, segments: 4}, scene);  
+        let sign = Math.random() < 0.5;
+        mic.position.y = Math.random() * (sign ? -11.2 : -1);
+        sign = Math.random() < 0.5;
+        mic.position.x = Math.random() * (sign ? 1 : -1)*5.2;
+        sign = Math.random() < 0.5;
+        mic.position.z = Math.random() * (sign ? 1 : -1)*5.2;
+        mic.rotation = new BABYLON.Vector3(Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180, Math.random() *360 * Math.PI / 180);    //    ground.rotation.x = 180 * Math.PI / 180 ;
+        balls.push(mic);  
+     } 
+     
+     balls.forEach(ball => {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 1});
+    });
+        
+    });
+    panel.addControl(slider);  
+    
+  /*  var button = BABYLON.GUI.Button.CreateImageButton("but", "Click Me");
+    button.width = 0.2;
+    button.height = "40px";
+    button.width = "100px";
+    button.color = "white";
+    button.background = "green";  
+     panel.addControl(button); */    
+
+    return scene;
+};
+
+                /******* End of the create scene function ******/    
+
+                var scene = createScene(); //Call the createScene function
+
+            engine.runRenderLoop(function () { // Register a render loop to repeatedly render the scene
+                    scene.render();
+            });
+
+
+            window.addEventListener("resize", function () { // Watch for browser/canvas resize events
+                    engine.resize();
+            });
+    </script>
+
+   </body>
+
+</html>
+
+

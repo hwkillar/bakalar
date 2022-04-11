@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+      <title>Babylon Template</title>
+
+      <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>  
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="archiv/cannons.js"></script>
+        <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+
+
+
+   </head>
+
+   <body>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas> //touch-action="none" for best results from PEP
+
+    <script>
+    //https://playground.babylonjs.com/#DU4FPJ#3
+    //https://playground.babylonjs.com/#8ZNVGR
+    //https://playground.babylonjs.com/#IQN716#9
+    //https://playground.babylonjs.com/#2BLI9T#368
+
+
+            var canvas = document.getElementById("renderCanvas"); // Get the canvas element 
+
+            var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+
+
+            /******* Add the create scene function ******/
+           
+var createScene = function () {
+
+    // Low Poly Character with Blender Tutorial of Grant Abbitt: https://www.youtube.com/user/mediagabbitt
+    // Character animations by Mixamo: https://www.mixamo.com/
+    //https://doc.babylonjs.com/guidedLearning/createAGame/characterMovePt1
+    //https://stackoverflow.com/questions/27571362/character-movement-using-babylon-js
+    //https://developer.mozilla.org/en-US/docs/Games/Techniques/Control_mechanisms/Desktop_with_mouse_and_keyboard
+    //https://doc.babylonjs.com/divingDeeper/physics/forces
+          /*
+    else if (eventData.type === BABYLON.PointerEventTypes.POINTERWHEEL) {
+           
+                alert(eventData.event.button)
+            
+        }  
+        
+        https://doc.babylonjs.com/divingDeeper/scene/interactWithScenes
+        https://forum.babylonjs.com/t/check-if-pointereventtypes-pointertap-comes-from-left-or-right-mouse-button/11222/2
+        https://playground.babylonjs.com/#2SA7J8#7
+        
+        3. 12     9h
+        
+        */
+
+    engine.enableOfflineSupport = false;
+
+    // Scene and Camera
+    var scene = new BABYLON.Scene(engine); 
+
+    var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
+    scene.activeCamera = camera1;
+    scene.activeCamera.attachControl(canvas, true);
+    camera1.lowerRadiusLimit = 2;
+    camera1.upperRadiusLimit = 10;
+    camera1.wheelDeltaPercentage = 0.01;
+
+    // Lights
+    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    light.intensity = 0.6;
+    light.specular = BABYLON.Color3.Black();
+
+    var light2 = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0, -0.5, -1.0), scene);
+    light2.position = new BABYLON.Vector3(0, 5, 5);
+
+
+
+
+    // Ground
+  /*  var ground = BABYLON.MeshBuilder.CreateGround("ground", { height: 80, width: 80, subdivisions: 4 }, scene);
+    var groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+    groundMaterial.diffuseColor  = new BABYLON.Color3(0, 0, 1);
+    ground.material = groundMaterial;  */
+
+    // Keyboard events
+    var inputMap = {};
+    scene.actionManager = new BABYLON.ActionManager(scene);
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+
+
+    // Load hero character
+ //   BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb", scene, function (newMeshes, particleSystems, skeletons, animationGroups) {
+        //var hero = newMeshes[0];
+        
+        var ground = BABYLON.MeshBuilder.CreateBox("ground", {width: 75, height: 0.5, depth: 35}, scene);
+   // ground.position.y = -0.25;
+
+       var hero = new BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:0.25, capSubdivisions: 6, subdivisions:6, tessellation:36, height:2, orientation:BABYLON.Vector3.Forward()});
+       hero.position.y = 5.11;
+       var herodMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+       herodMaterial.diffuseColor  = new BABYLON.Color3(1, 0, 0);
+       hero.material = herodMaterial; 
+
+        var positions = [-1,1,1,1,1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,-1,1,-1,-1,-1,1,-1,-1,-1,1,-1,1,-1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,1,-1,1,-1,1,1,1,-1,1
+,-1,-1,1,-1,1,-1,1,1,-1,-1,1,-1,-1,1,1,1,-1,-1,-1,-1,-1,1,1,1,1,1,-1,1,-1,-1,-1,1,1,1,1,1,1,-1,1];
+    var indices = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,0,18,1,19,20,4,6,21,7,9,22,23,24,25,26,27,28,29];
+    var normals = [0,1,0,0,1,0,0,1,0,0,0,-1,0,0,-1,0,0,-1,-1,0,0,-1,0,0,-1,0,0,0,-1,0,0,-1,0,0,-1,0,1,0,0,1,0,0,1,0,0,0,0,1,0,0,1
+,0,0,1,0,1,0,0,0,-1,0,0,-1,-1,0,0,0,-1,0,0,-1,0,1,0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0,1];
+    var uvs = [0.875,0.5,0.625,0.75,0.625,0.5,0.625,0.75,0.375,1,0.375,0.75,0.625,0,0.375,0.25,0.375,0,0.375,0.5,0.125,0.75,0.125,0.5,0.625,0.5,0.375,0.75,0.375,0.5,0.625,0.25,0.375,0.5,0.375,0.25,0.875,0.75,0.625,0.75,0.625,1,0.625,0.25,0.375,0.75,0.125,0.75,0.625,0.5
+,0.625,0.75,0.375,0.75,0.625,0.25,0.625,0.5,0.375,0.5];
+    var instances = [];
+
+    	var vertexData = new BABYLON.VertexData();
+	BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+
+    	vertexData.positions = positions;
+	vertexData.indices = indices;
+	vertexData.normals = normals;
+    vertexData.uvs = uvs;
+    vertexData.instances = instances;
+
+
+	//Apply vertexData to custom mesh
+//	vertexData.applyToMesh(hero);
+
+        //Scale the model down        
+        hero.scaling.scaleInPlace(1);
+
+        //Lock camera on the character 
+        camera1.target = hero;
+
+        //Hero character variables 
+        var heroSpeed = 0.1;
+        var heroSpeedBackwards = 0.01;
+        var heroRotationSpeed = 0.01;
+
+        var vektor = new BABYLON.Vector3(0, 1, 0);
+        var vektor1 = new BABYLON.Vector3(0, -1, 0); 
+        
+        
+        
+ scene.onPointerObservable.add((pointerInfo) => {
+		switch (pointerInfo.type) {
+			case BABYLON.PointerEventTypes.POINTERWHEEL:
+                switch (pointerInfo.event.button) {
+                    case 0: 
+                        if(heroSpeed == 0.1)
+               {
+                    heroSpeed = 0.5;
+               }
+               else
+               {
+                  heroSpeed = 0.1;
+               }  
+               
+            //   alert(hero.rotation.y);   //hero.position.x
+                        break;
+                    case 1: 
+                        alert("bbbb");
+                        break;
+                    case 2: 
+                        alert("cccc");
+                        break;
+                }
+            break;
+        }
+    });
+          
+        //Rendering loop (executed for everyframe)
+        scene.onBeforeRenderObservable.add(() => {
+         //  hero.moveWithCollisions(hero.forward.scaleInPlace(0.5)); 
+          
+           /* 
+              balls.forEach(ball => {
+        ball.moveWithCollisions(hero.forward.scaleInPlace(-Math.random()));
+    });  */
+            
+               
+            var keydown = false;
+            //Manage the movements of the character (e.g. position, direction)
+            if (inputMap["r"]) {  
+               // hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));  
+               if(heroSpeed == 0.1)
+               {
+                    heroSpeed = 0.5;
+               }
+               else
+               {
+                  heroSpeed = 0.1;
+               } 
+                keydown = true;               /*zmenit vector*/
+            } 
+            if (inputMap["w"]) {
+               // hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
+               hero.rotate(new BABYLON.Vector3(-1, 0, 0),  0.01); 
+              //  hero.rotate(BABYLON.Vector3.Left(), heroRotationSpeed); 
+                keydown = true;               /*zmenit vector*/
+            }  
+            if (inputMap["s"]) {
+              //  hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeedBackwards));  
+            //  hero.rotate(BABYLON.Vector3.Left(), -heroRotationSpeed); 
+            hero.rotate(new BABYLON.Vector3(1, 0, 0),  0.01);    
+                keydown = true;
+            }
+            if (inputMap["a"]) {
+             //   hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
+             hero.rotate(new BABYLON.Vector3(0, -1, 0),  0.01); 
+                keydown = true;
+            }
+            if (inputMap["d"]) {
+             //   hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+             hero.rotate(new BABYLON.Vector3(0, 1, 0),  0.01); 
+                keydown = true;
+            }
+
+        });
+        
+        function rand() {
+        let sign = Math.random() < 0.5;
+        return Math.random() * (sign ? 1 : -1);
+    }
+
+    function ballPosition(ball) {
+        ball.position.y = 2.1;
+        ball.position.x = rand() * 50;
+        ball.position.z = rand() * 50;
+    }
+
+    let ball = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 2, segments: 4}, scene);
+    ball.position.y = 10;
+        ball.position.x = 2;
+        ball.position.z = 2;
+    let balll = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 2, segments: 4}, scene);
+    balll.position.y = 1.5;
+        balll.position.x = 2;
+        balll.position.z = 2.3;    
+    let balls = [ball,balll];
+
+    let x = 0
+    for(let i = 0; i < 10; ++i) {
+        let b = ball.clone("ball" + x);
+        ball.position.y = 20;
+        ball.position.x = i*2+5;
+        ball.position.z = -10;
+        balls.push(b);
+        x = x+1
+        
+        b = ball.clone("ball" + x);
+        ball.position.y = 1.5;
+        ball.position.x = i*2+5;
+        ball.position.z = -10.3;
+        balls.push(b);
+        x = x+1
+    }  
+    
+    for(let j = -9; j < -3; ++j) {
+    for(let i = -9; i < -3; ++i) {
+    for(let k = 30; k < 35; ++k) {
+        let b = ball.clone("ball" + x);
+        ball.position.y = k*2+5;
+        ball.position.x = i*2+5;
+        ball.position.z = j*2+5;
+        balls.push(b);
+        x = x+1  } 
+        
+        b = ball.clone("ball" + x);
+        ball.position.y = 1.5;
+        ball.position.x = i*2+5;
+        ball.position.z = j*2+5.3;
+        balls.push(b);
+        x = x+1
+    }}
+    
+    
+  /*  let x = 0
+    for(let i = -5; i < 2; ++i) {
+    for(let j = 5; j < 12; ++j) {
+    for(let k = -5; k < 2; ++k) {
+        let b = ball.clone("ball" + x);
+        ball.position.y = k*2;
+        ball.position.x = i*2;
+        ball.position.z = j*2;
+        balls.push(b);
+        x = x+1
+    }}}   */
+
+    let cannon = true;
+    let forceFactor = cannon ? 1 : 1500; 
+     
+     scene.enablePhysics(undefined, (!cannon ? new BABYLON.OimoJSPlugin(100) : new BABYLON.CannonJSPlugin(true, 100)));
+    
+      var physicsEngine = scene.getPhysicsEngine();
+      physicsEngine.setGravity(new BABYLON.Vector3(0, -1, 0)); 
+      
+      var gravityVector = new BABYLON.Vector3(0, 0, 0);
+    var physicsPlugin = new BABYLON.CannonJSPlugin();
+    scene.enablePhysics(gravityVector, physicsPlugin);
+  
+  //  physicsEngine.setGravity(new BABYLON.Vector3(0, 0, 0));
+    
+   // hero.physicsImpostor = new BABYLON.PhysicsImpostor(hero, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 10, friction: 0.9, restitution: 1.5});
+    
+    ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, {mass: 0});
+    
+ balls.forEach(ball => {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 1});
+    });
+
+    return scene;
+};
+
+                /******* End of the create scene function ******/    
+
+                var scene = createScene(); //Call the createScene function
+
+            engine.runRenderLoop(function () { // Register a render loop to repeatedly render the scene
+                    scene.render();
+            });
+
+
+            window.addEventListener("resize", function () { // Watch for browser/canvas resize events
+                    engine.resize();
+            });
+    </script>
+
+   </body>
+
+</html>
+ https://gist.github.com/but0n/b7d163daa0f4be02c3057f85b94e948e
+ https://github.com/Dekunutter/3D-Separating-Axis-Theorem
+ https://github.com/carolhmj/quickhull-3d
+ 
+ https://gamedevelopment.tutsplus.com/tutorials/webgl-physics-and-collision-detection-using-babylonjs-and-oimojs--cms-24114
+ https://medium.com/@bluemagnificent/collision-detection-in-javascript-3d-physics-using-ammo-js-and-three-js-31a5569291ef
+ https://doc.babylonjs.com/divingDeeper/mesh/interactions/mesh_intersect
+ 
+ if(!this.needBroadphaseCollision(bi,bj)){
+                continue;
+            }
+
+            this.intersectionTest(bi,bj,pairs1,pairs2);
+
+
+
+
+            if(!SAPBroadphase.checkBounds(bi,bj,axisIndex)){
+
+
+
+if(this.useBoundingBoxes){
+        this.doBoundingBoxBroadphase(bodyA,bodyB,pairs1,pairs2);
+    } else {
+        this.doBoundingSphereBroadphase(bodyA,bodyB,pairs1,pairs2);
