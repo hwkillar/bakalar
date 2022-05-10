@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+      <title>Babylon Template</title>
+
+      <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>  
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="https://cdn.babylonjs.com/cannon.js"></script>
+        <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+
+
+
+   </head>
+
+   <body>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas> //touch-action="none" for best results from PEP
+
+    <script>
+
+
+
+            var canvas = document.getElementById("renderCanvas"); 
+
+            var engine = new BABYLON.Engine(canvas, true); 
+
+
+
+           
+var createScene = function () {
+
+
+
+    engine.enableOfflineSupport = false;
+
+    // Scene and Camera
+    var scene = new BABYLON.Scene(engine); 
+
+    var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
+    scene.activeCamera = camera1;
+    scene.activeCamera.attachControl(canvas, true);
+    camera1.lowerRadiusLimit = 2;
+    camera1.upperRadiusLimit = 10;
+    camera1.wheelDeltaPercentage = 0.01;
+
+    // Lights
+    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    light.intensity = 0.6;
+    light.specular = BABYLON.Color3.Black();
+
+    var light2 = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0, -0.5, -1.0), scene);
+    light2.position = new BABYLON.Vector3(0, 5, 5);
+
+
+    var isLocked = false;
+	
+	scene.onPointerDown = function (evt) 
+    {
+		if (!isLocked)
+        {
+			canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+			if (canvas.requestPointerLock)
+            {
+				canvas.requestPointerLock();
+			}
+		}
+	};
+	
+
+
+	var pointerlockchange = function () {
+		var controlEnabled = document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement || document.pointerLockElement || null;
+		
+		if (!controlEnabled) 
+        {
+			isLocked = false;
+		} 
+        else
+        {
+			isLocked = true;
+		}
+	};
+
+
+
+    // Keyboard events
+    var inputMap = {};
+    scene.actionManager = new BABYLON.ActionManager(scene);
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+
+       var hero = new BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:0.25, capSubdivisions: 6, subdivisions:6, tessellation:36, height:2, orientation:BABYLON.Vector3.Forward()});
+       hero.position.y = 5.11;
+       let herodMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+       herodMaterial.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+       hero.material = herodMaterial; 
+
+            
+        hero.scaling.scaleInPlace(1);
+
+ 
+        camera1.target = hero;
+
+ 
+        var heroSpeed = 0;
+        var heroSpeedBackwards = 0.1;
+        var heroRotationSpeed = 0.01;
+
+        var vektor = new BABYLON.Vector3(0, 1, 0);
+        var vektor1 = new BABYLON.Vector3(0, -1, 0); 
+        
+        scene.onPointerObservable.add((pointerInfo) => {
+		switch (pointerInfo.type) {
+			case BABYLON.PointerEventTypes.POINTERWHEEL:
+                if(pointerInfo.event.deltaY < 0)
+                {
+                    if(heroSpeed < 0.2)
+                    {
+                         heroSpeed = heroSpeed+0.1
+                    }
+                }
+                else if (pointerInfo.event.deltaY > 0)
+                {
+                    if(heroSpeed > -0.2)
+                    {
+                         heroSpeed = heroSpeed - 0.1
+                    }
+                }
+            break;
+        }
+    });
+          
+        let index_detekce = 0;
+        
+        scene.onBeforeRenderObservable.add(() => {
+  
+            hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
+               
+            var keydown = false;
+            
+            if (inputMap["a"]) {
+                hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
+       
+                keydown = true;
+            }
+            if (inputMap["d"]) {
+                hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+          
+                keydown = true;
+            }
+            if (inputMap["s"]) {
+       
+            hero.moveWithCollisions(hero.up.scaleInPlace(-heroSpeedBackwards));
+                keydown = true;
+            }
+            if (inputMap["w"]) {
+          
+            hero.moveWithCollisions(hero.up.scaleInPlace(heroSpeedBackwards));
+                keydown = true;
+            }
+            
+            var pocet_kolizi = 0;
+            let timee = performance.now();
+            
+
+        });
+        
+    ////////////////////////////////////
+
+    let ball = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 7, segments: 4}, scene);
+    ball.position.x = -10;
+    ball.position.z = -10;
+    let material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    ball.material = material; 
+    
+    let objekt = BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:1.5, height:15, radiusTop:4});;
+    objekt.position.x = -10;
+    objekt.position.z = 20;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    let balls = [ball, objekt];
+    
+    objekt = BABYLON.MeshBuilder.CreateTorusKnot("tk", {tube: 0.1, radialSegments: 128});
+    objekt.position.x = -10;
+    objekt.position.z = 50; 
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateBox("objekt", {width: 10, height: 0.5, depth: 10}, scene); 
+    objekt.position.x = 10;
+    objekt.position.z = -10; 
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateBox("objekt", {width: 10, height: 0.5, depth: 10}, scene); 
+    objekt.position.x = 10;
+    objekt.position.z = 20; 
+    objekt.rotation.z = 45 * Math.PI / 180 ;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateBox("objekt", {width: 10, height: 0.5, depth: 10}, scene); 
+    objekt.position.x = 10;
+    objekt.position.z = 50; 
+    objekt.rotation.z = 90 * Math.PI / 180 ;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateTorus("torus", {thickness: 0.25, diameter: 8});
+    objekt.position.x = 30;
+    objekt.position.z = -10; 
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateTorus("torus", {thickness: 0.25, diameter: 8});
+    objekt.position.x = 30;
+    objekt.position.z = 20;
+    objekt.rotation.z = 45 * Math.PI / 180 ;
+    objekt.rotation.y = 45 * Math.PI / 180 ; 
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateTorus("torus", {thickness: 0.25, diameter: 8});
+    objekt.position.x = 30;
+    objekt.position.z = 50;
+    objekt.rotation.z = 90 * Math.PI / 180 ;
+    objekt.rotation.y = 90 * Math.PI / 180 ; 
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateCylinder("cylinder", {tessellation: 3});
+    objekt.position.x = 50;
+    objekt.position.z = -10; 
+    objekt.scaling.x = 8;
+    objekt.scaling.y = 8;
+    objekt.scaling.z = 8;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateCylinder("cylinder", {tessellation: 3});
+    objekt.position.x = 50;
+    objekt.position.z = 20;
+    objekt.scaling.x = 8;
+    objekt.scaling.y = 8;
+    objekt.scaling.z = 8; 
+    objekt.rotation.z = 45 * Math.PI / 180 ;
+    objekt.rotation.y = 45 * Math.PI / 180 ;
+    objekt.rotation.x = 45 * Math.PI / 180 ;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;  
+    balls.push(objekt);
+    
+    objekt = BABYLON.MeshBuilder.CreateCylinder("cylinder", {tessellation: 3});
+    objekt.position.x = 50;
+    objekt.position.z = 50;
+    objekt.scaling.x = 8;
+    objekt.scaling.y = 8;
+    objekt.scaling.z = 8;
+    objekt.rotation.z = 90 * Math.PI / 180 ;
+    objekt.rotation.y = 90 * Math.PI / 180 ;
+    objekt.rotation.x = 90 * Math.PI / 180 ;
+    material = new BABYLON.StandardMaterial("groundMaterial", scene);
+    material.diffuseColor  = new BABYLON.Color3(1, 1, 1);
+    objekt.material = material;   
+    balls.push(objekt);
+    
+    for (let x = 0; x < scene.meshes.length; x++) 
+    {
+        scene.meshes[x].visibility = 0.5;                        
+    }
+
+ 
+
+    let cannon = true;
+    let forceFactor = cannon ? 1 : 1500; 
+     
+     scene.enablePhysics(undefined, (!cannon ? new BABYLON.OimoJSPlugin(100) : new BABYLON.CannonJSPlugin(true, 100)));
+    
+      var physicsEngine = scene.getPhysicsEngine();
+      physicsEngine.setGravity(new BABYLON.Vector3(0, -1, 0)); 
+      
+      var gravityVector = new BABYLON.Vector3(0, 0, 0);
+    var physicsPlugin = new BABYLON.CannonJSPlugin();
+    scene.enablePhysics(gravityVector, physicsPlugin);
+  
+
+ balls.forEach(ball => {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.BoxImpostor, {mass: 0});
+    });
+
+    return scene;
+};
+    
+
+                var scene = createScene(); 
+
+            engine.runRenderLoop(function () { 
+                    scene.render();
+            });
+
+
+            window.addEventListener("resize", function () { 
+                    engine.resize();
+            });
+    </script>
+
+   </body>
+
+</html>

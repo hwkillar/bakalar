@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+      <title>Babylon Template</title>
+
+      <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>  
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="https://cdn.babylonjs.com/cannon.js"></script>
+        <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+        
+      
+
+
+
+   </head>
+
+   <body>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas> //touch-action="none" for best results from PEP
+
+    <script>
+  
+
+
+            var canvas = document.getElementById("renderCanvas"); 
+
+            var engine = new BABYLON.Engine(canvas, true);
+
+
+
+           
+var createScene = function () {
+
+    const koliz_cas_pole = [];
+    const pocet_kolizi_pole = [];
+    const pocet_meshu = [];
+    var max_pole = 500;
+    var index_pole = 0;
+
+    BABYLON.Mesh.prototype.increaseFacets = function(pps) { 
+    var _gaps = pps+1;
+    var _n = _gaps + 1;
+    var _fvs =[];
+    for(var _i=0; _i<_n; _i++) {
+        _fvs[_i] = [];
+    }    
+    var _A,_B;
+    var _d ={x:0,y:0,z:0};
+    var _u ={x:0,y:0};
+    var _indices = [];
+    var _vertexIndex = [];
+    var _side = [];
+	var _l; 
+    var _uvs = this.getVerticesData(BABYLON.VertexBuffer.UVKind);
+    var _meshIndices = this.getIndices();
+    var _positions = this.getVerticesData(BABYLON.VertexBuffer.PositionKind);    
+    var _normals =[];    
+
+    for(var _i = 0; _i<_meshIndices.length; _i+=3) {
+        _vertexIndex[0] = _meshIndices[_i];
+        _vertexIndex[1] = _meshIndices[_i + 1];
+        _vertexIndex[2] = _meshIndices[_i + 2];        
+        for(var _j = 0; _j<3; _j++) {
+            _A = _vertexIndex[_j];
+            _B = _vertexIndex[(_j+1)%3];        
+            if(_side[_A] === undefined  && _side[_B] ===  undefined) {            
+                _side[_A] = [];
+                _side[_B] = [];            
+            }
+            else {
+                if(_side[_A] === undefined) {                    
+                    _side[_A] = [];
+                }
+                if(_side[_B] === undefined) {                    
+                    _side[_B] = [];                                
+                }
+            }
+            if(_side[_A][_B]  === undefined  && _side[_B][_A] === undefined) {            
+                _side[_A][_B] = [];
+                _d.x = (_positions[3 * _B] - _positions[3 * _A])/_gaps;
+                _d.y = (_positions[3 * _B + 1] - _positions[3 * _A + 1])/_gaps;
+                _d.z = (_positions[3 * _B + 2] - _positions[3 * _A + 2])/_gaps;
+                _u.x = (_uvs[2*_B] - _uvs[2*_A])/_gaps;
+                _u.y = (_uvs[2*_B + 1] - _uvs[2*_A + 1])/_gaps;
+                _side[_A][_B].push(_A);                
+                for(var _k=1; _k<_gaps; _k++) {                
+                    _side[_A][_B].push(_positions.length/3);                
+                    _positions.push(_positions[3 * _A] + _k*_d.x, _positions[3 * _A + 1] + _k*_d.y, _positions[3 * _A + 2] + _k*_d.z);
+                    _uvs.push(_uvs[2*_A] + _k*_u.x, _uvs[2*_A + 1] + _k*_u.y);
+                }                
+                _side[_A][_B].push(_B);
+                _side[_B][_A]=[];
+                _l = _side[_A][_B].length;
+                for(var _a=0; _a<_l; _a++) {
+                    _side[_B][_A][_a] = _side[_A][_B][_l-1-_a];
+                }
+            }
+            else {
+                if(_side[_A][_B] === undefined) {            
+                    _side[_A][_B]=[];
+                    _l = _side[_B][_A].length;
+                    for(var _a=0; _a<_l; _a++) {
+                        _side[_A][_B][_a] = _side[_B][_A][_l-1-_a];
+                    }
+                }
+                if(_side[_B][_A] === undefined) {            
+                    _side[_B][_A]=[];                
+                    _l = _side[_A][_B].length;
+                    for(var _a=0; _a<_l; _a++) {
+                        _side[_B][_A][_a] = _side[_A][_B][_l-1-_a];
+                    }
+                }
+            }                    
+        }    
+        _fvs[0][0] = _meshIndices[_i];
+        _fvs[1][0] = _side[_meshIndices[_i]][_meshIndices[_i + 1]][1];
+        _fvs[1][1] = _side[_meshIndices[_i]][_meshIndices[_i + 2]][1];        
+        for(var _k = 2; _k<_gaps; _k++) {
+            _fvs[_k][0] = _side[_meshIndices[_i]][_meshIndices[_i + 1]][_k];
+            _fvs[_k][_k] = _side[_meshIndices[_i]][_meshIndices[_i + 2]][_k];        
+            _d.x = (_positions[3 * _fvs[_k][_k]] - _positions[3 * _fvs[_k][0]])/_k;
+            _d.y = (_positions[3 * _fvs[_k][_k] + 1] - _positions[3 * _fvs[_k][0] + 1])/_k;
+            _d.z = (_positions[3 * _fvs[_k][_k] + 2] - _positions[3 * _fvs[_k][0] + 2])/_k;
+            _u.x = (_uvs[2*_fvs[_k][_k]] - _uvs[2*_fvs[_k][0]])/_k;
+            _u.y = (_uvs[2*_fvs[_k][_k] + 1] - _uvs[2*_fvs[_k][0] + 1])/_k;
+            for(var _j = 1; _j<_k; _j++) {                
+                _fvs[_k][_j] = _positions.length/3;                
+                _positions.push(_positions[3 * _fvs[_k][0]] + _j*_d.x, _positions[3 * _fvs[_k][0] + 1] + _j*_d.y, _positions[3 * _fvs[_k][0] + 2] + _j*_d.z);
+                _uvs.push(_uvs[2*_fvs[_k][0]] + _j*_u.x, _uvs[2*_fvs[_k][0] + 1] + _j*_u.y);
+            }        
+        }
+        _fvs[_gaps] = _side[_meshIndices[_i + 1]][_meshIndices[_i + 2]];
+
+        _indices.push(_fvs[0][0],_fvs[1][0],_fvs[1][1]);
+        for(var _k = 1; _k<_gaps; _k++) {
+            for(var _j = 0; _j<_k; _j++) {            
+                _indices.push(_fvs[_k][_j],_fvs[_k+1][_j],_fvs[_k+1][_j+1]);
+                _indices.push(_fvs[_k][_j],_fvs[_k+1][_j+1],_fvs[_k][_j+1]);
+            }        
+            _indices.push(_fvs[_k][_j],_fvs[_k+1][_j],_fvs[_k+1][_j+1]);
+        }
+
+    }                            
+
+    var vertexData = new BABYLON.VertexData();
+    vertexData.positions = _positions;
+    vertexData.indices = _indices;
+    vertexData.uvs = _uvs;
+
+    BABYLON.VertexData.ComputeNormals(_positions, _indices, _normals);
+    vertexData.normals = _normals;
+	
+    vertexData.applyToMesh(this);
+
+    }
+    
+    function optimalizacni_funkce(obj1, obj2)
+    {
+        var posx = obj1.position.x - obj2.position.x;
+            var posy = obj1.position.y - obj2.position.y;
+            var posz = obj1.position.z - obj2.position.z;
+            
+            if(posx<0){posx = posx*-1}
+            if(posy<0){posy = posy*-1}
+            if(posz<0){posz = posz*-1}
+            
+            var rozmer_herox = obj1.getBoundingInfo().maximum["x"] ;
+            var rozmer_heroy = obj1.getBoundingInfo().maximum["y"] ;
+            var rozmer_heroz = obj1.getBoundingInfo().maximum["z"] ;
+            
+            var rozmer_groundx = obj2.getBoundingInfo().maximum["x"];
+            var rozmer_groundy = obj2.getBoundingInfo().maximum["y"];
+            var rozmer_groundz = obj2.getBoundingInfo().maximum["z"];
+            
+            //xxxxxxxxxxxxxxxxxxxxxxxxxxx
+            var euler_ground = obj2.rotationQuaternion.toEulerAngles();
+            
+            var pripona_ground = Math.sqrt(rozmer_groundx*rozmer_groundx  +  rozmer_groundy*rozmer_groundy);
+            
+            var uhelx_ground = Math.asin(rozmer_groundx/pripona_ground);
+            
+            rozmer_groundx = pripona_ground * Math.sin(euler_ground.z + uhelx_ground);
+            rozmer_groundy = pripona_ground * Math.cos(euler_ground.z + uhelx_ground);
+            
+            if(rozmer_groundx<0){rozmer_groundx=rozmer_groundx*-1}
+            if(rozmer_groundy<0){rozmer_groundy=rozmer_groundy*-1}
+            
+            //xxxxxxxxxxxxxxxxxxxxxxx
+            
+            pripona_ground = Math.sqrt(rozmer_groundx*rozmer_groundx  +  rozmer_groundz*rozmer_groundz);
+            
+            var uhelz_ground = Math.asin(rozmer_groundz/pripona_ground);
+            
+            rozmer_groundz = pripona_ground * Math.sin(euler_ground.y + uhelz_ground);
+            rozmer_groundx = pripona_ground * Math.cos(euler_ground.y + uhelz_ground);
+            
+            if(rozmer_groundx<0){rozmer_groundx=rozmer_groundx*-1}
+            if(rozmer_groundz<0){rozmer_groundz=rozmer_groundz*-1}
+            
+            //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            
+            pripona_ground = Math.sqrt(rozmer_groundz*rozmer_groundz  +  rozmer_groundy*rozmer_groundy);
+            
+            var uhely_ground = Math.asin(rozmer_groundy/pripona_ground);
+            
+            rozmer_groundy = pripona_ground * Math.sin(euler_ground.x + uhely_ground);
+            rozmer_groundz = pripona_ground * Math.cos(euler_ground.x + uhely_ground);
+            
+            if(rozmer_groundy<0){rozmer_groundy=rozmer_groundy*-1}
+            if(rozmer_groundz<0){rozmer_groundz=rozmer_groundz*-1}
+            
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            var euler_hero = obj1.rotationQuaternion.toEulerAngles()
+            var pripona_hero = Math.sqrt(rozmer_herox*rozmer_herox  +  rozmer_heroy*rozmer_heroy);
+            var uhelx_hero = Math.asin(rozmer_herox/pripona_hero);
+            rozmer_herox = pripona_hero * Math.sin(euler_hero.z + uhelx_hero);
+            rozmer_heroy = pripona_hero * Math.cos(euler_hero.z + uhelx_hero);
+            if(rozmer_herox<0){rozmer_herox=rozmer_herox*-1}
+            if(rozmer_heroy<0){rozmer_heroy=rozmer_heroy*-1}
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            pripona_hero = Math.sqrt(rozmer_herox*rozmer_herox  +  rozmer_heroz*rozmer_heroz);
+            var uhelz_hero = Math.asin(rozmer_heroz/pripona_hero);
+            rozmer_heroz = pripona_hero * Math.sin(euler_hero.y + uhelz_hero);
+            rozmer_herox = pripona_hero * Math.cos(euler_hero.y + uhelz_hero);
+            if(rozmer_herox<0){rozmer_herox=rozmer_herox*-1}
+            if(rozmer_heroz<0){rozmer_heroz=rozmer_heroz*-1}
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            pripona_hero = Math.sqrt(rozmer_heroz*rozmer_heroz  +  rozmer_heroy*rozmer_heroy);
+            var uhely_hero = Math.asin(rozmer_heroy/pripona_hero);
+            rozmer_heroy = pripona_hero * Math.sin(euler_hero.x + uhely_hero);
+            rozmer_heroz = pripona_hero * Math.cos(euler_hero.x + uhely_hero);
+            if(rozmer_heroy<0){rozmer_heroy=rozmer_heroy*-1}
+            if(rozmer_heroz<0){rozmer_heroz=rozmer_heroz*-1} 
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            
+            var rozmerx = rozmer_herox + rozmer_groundx;
+            var rozmery = rozmer_heroy + rozmer_groundy;
+            var rozmerz = rozmer_heroz + rozmer_groundz;
+            
+            
+            if ((posx <= rozmerx && posy <= rozmery && posz <= rozmerz)) 
+            {
+                return true;
+            } 
+            else
+            {
+                return false;
+            }
+    }
+
+    function rotace_pro_5_alg(obj1, obj1_hrany, obj2, obj2_hrany)
+    {
+        var euler_obj2 = obj2.rotationQuaternion.toEulerAngles(); 
+            
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                obj1_hrany[n][0] = obj1_hrany[n][0] - obj1.position.x;
+                obj1_hrany[n][1] = obj1_hrany[n][1] - obj1.position.y;
+                obj1_hrany[n][2] = obj1_hrany[n][2] - obj1.position.z;
+            } 
+            
+            var euler_obj1 = obj1.rotationQuaternion.toEulerAngles(); 
+            
+            var obj1_sin_x = Math.sin(euler_obj1.x);
+            var obj1_cos_x = Math.cos(euler_obj1.x);
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let y = obj1_hrany[n][1];
+                let z = obj1_hrany[n][2];
+                obj1_hrany[n][1] = y * obj1_cos_x - z * obj1_sin_x;
+                obj1_hrany[n][2] = z * obj1_cos_x + y * obj1_sin_x;
+            }
+            
+            var obj1_sin_y = Math.sin(euler_obj1.y);
+            var obj1_cos_y = Math.cos(euler_obj1.y);
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let x = obj1_hrany[n][0];
+                var z = obj1_hrany[n][2];
+                obj1_hrany[n][0] = x * obj1_cos_y + z * obj1_sin_y;
+                obj1_hrany[n][2] = z * obj1_cos_y - x * obj1_sin_y;
+            }
+            
+            var obj1_sin_z = Math.sin(euler_obj1.z);
+            var obj1_cos_z = Math.cos(euler_obj1.z);  
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let x = obj1_hrany[n][0];
+                let y = obj1_hrany[n][1];
+                obj1_hrany[n][0] = x * obj1_cos_z - y * obj1_sin_z;
+                obj1_hrany[n][1] = y * obj1_cos_z + x * obj1_sin_z;
+            }  
+            
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                obj1_hrany[n][0] = obj1_hrany[n][0] + obj1.position.x;
+                obj1_hrany[n][1] = obj1_hrany[n][1] + obj1.position.y;
+                obj1_hrany[n][2] = obj1_hrany[n][2] + obj1.position.z;
+            } 
+            
+            
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                obj1_hrany[n][0] = obj1_hrany[n][0] - obj2.position.x;
+                obj1_hrany[n][1] = obj1_hrany[n][1] - obj2.position.y;
+                obj1_hrany[n][2] = obj1_hrany[n][2] - obj2.position.z;
+            } 
+            
+            var obj1_sin_x = Math.sin(-euler_obj2.x);
+            var obj1_cos_x = Math.cos(-euler_obj2.x);                        
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let y = obj1_hrany[n][1];
+                let z = obj1_hrany[n][2];
+                obj1_hrany[n][1] = y * obj1_cos_x - z * obj1_sin_x;
+                obj1_hrany[n][2] = z * obj1_cos_x + y * obj1_sin_x;
+            }
+            
+            var obj1_sin_y = Math.sin(-euler_obj2.y);
+            var obj1_cos_y = Math.cos(-euler_obj2.y);
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let x = obj1_hrany[n][0];
+                var z = obj1_hrany[n][2];
+                obj1_hrany[n][0] = x * obj1_cos_y + z * obj1_sin_y;
+                obj1_hrany[n][2] = z * obj1_cos_y - x * obj1_sin_y;
+            }
+            
+            var obj1_sin_z = Math.sin(-euler_obj2.z);
+            var obj1_cos_z = Math.cos(-euler_obj2.z);  
+    
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                let x = obj1_hrany[n][0];
+                let y = obj1_hrany[n][1];
+                obj1_hrany[n][0] = x * obj1_cos_z - y * obj1_sin_z;
+                obj1_hrany[n][1] = y * obj1_cos_z + x * obj1_sin_z;
+            }
+            
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                obj1_hrany[n][0] = obj1_hrany[n][0] + obj2.position.x;
+                obj1_hrany[n][1] = obj1_hrany[n][1] + obj2.position.y;
+                obj1_hrany[n][2] = obj1_hrany[n][2] + obj2.position.z;
+            }
+            
+
+            for (let n=0; n < obj1_hrany.length; n++) 
+            {
+                if(obj1_hrany[n][1] >= obj2_hrany[0][1] && obj1_hrany[n][1] <= obj2_hrany[2][1] && obj1_hrany[n][2] >= obj2_hrany[0][2] && obj1_hrany[n][2] <= obj2_hrany[1][2] )
+                {
+                    if(obj1_hrany[n][0] >= obj2_hrany[2][0] && obj1_hrany[n][0] <= obj2_hrany[6][0] && obj1_hrany[n][2] >= obj2_hrany[2][2] && obj1_hrany[n][2] <= obj2_hrany[3][2] )
+                    {
+                        if(obj1_hrany[n][0] >= obj2_hrany[0][0] && obj1_hrany[n][0] <= obj2_hrany[6][0] && obj1_hrany[n][1] >= obj2_hrany[0][1] && obj1_hrany[n][1] <= obj2_hrany[2][1] )
+                        {
+                            return 1;
+                        }
+                    }
+                
+                }
+            }
+            return 0;
+        
+    } 
+    function doTrianglesIntersect(t1, t2) {
+
+        var A0 = t1[0].clone();
+        var A1 = t1[1].clone();
+        var A2 = t1[2].clone();
+
+        var E0 = A1.clone().subtract(A0);
+        var E1 = A2.clone().subtract(A0);
+
+        var E2 = E1.clone().subtract(E0);
+
+        var N = E0.clone().cross(E1);
+
+        var B0 = t2[0].clone();
+        var B1 = t2[1].clone();
+        var B2 = t2[2].clone();
+
+        var F0 = B1.clone().subtract(B0);
+        var F1 = B2.clone().subtract(B0);
+
+        var F2 = F1.clone().subtract(F0);
+
+        var M = F0.clone().cross(F1);
+
+
+        var D = B0.clone().subtract(A0);
+
+
+        function areProjectionsSeparated(p0, p1, p2, q0, q1, q2) {
+            var min_p = Math.min(p0, p1, p2),
+            max_p = Math.max(p0, p1, p2),
+            min_q = Math.min(q0, q1, q2),
+            max_q = Math.max(q0, q1, q2);
+
+            return ((min_p > max_q) || (max_p < min_q));
+        }
+
+        {
+            var p0 = 0,
+            p1 = 0,
+            p2 = 0,
+            q0 = N.dot(D),
+            q1 = q0 + N.dot(F0),
+            q2 = q0 + N.dot(F1);
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = M.dot(E0),
+            p2 = M.dot(E1),
+            q0 = M.dot(D),
+            q1 = q0,
+            q2 = q0;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = 0,
+            p2 = -(N.dot(F0)),
+            q0 = E0.clone().cross(F0).dot(D),
+            q1 = q0,
+            q2 = q0 + M.dot(E0);
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = 0,
+            p2 = -(N.dot(F1)),
+            q0 = E0.clone().cross(F1).dot(D),
+            q1 = q0 - M.dot(E0),
+            q2 = q0;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = 0,
+            p2 = -(N.dot(F2)),
+            q0 = E0.clone().cross(F2).dot(D),
+            q1 = q0 - M.dot(E0),
+            q2 = q1;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F0),
+            p2 = 0,
+            q0 = E1.clone().cross(F0).dot(D),
+            q1 = q0,
+            q2 = q0 + M.dot(E1);
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F1),
+            p2 = 0,
+            q0 = E1.clone().cross(F1).dot(D),
+            q1 = q0 - M.dot(E1),
+            q2 = q0;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F2),
+            p2 = 0,
+            q0 = E1.clone().cross(F2).dot(D),
+            q1 = q0 - M.dot(E1),
+            q2 = q1;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F0),
+            p2 = p1,
+            q0 = E2.clone().cross(F0).dot(D),
+            q1 = q0,
+            q2 = q0 + M.dot(E2);
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F1),
+            p2 = p1,
+            q0 = E2.clone().cross(F1).dot(D),
+            q1 = q0 - M.dot(E2),
+            q2 = q0;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        {
+            var p0 = 0,
+            p1 = N.dot(F2),
+            p2 = p1,
+            q0 = E2.clone().cross(F2).dot(D),
+            q1 = q0 - M.dot(E2),
+            q2 = q1;
+
+            if (areProjectionsSeparated(p0, p1, p2, q0, q1, q2))
+                return false;
+        }
+
+        return true;
+    }
+    
+
+    
+    BABYLON.Vector3.prototype.dot = function (b) 
+     {
+        return this.x * b.x + this.y * b.y + this.z * b.z;
+     }
+
+    engine.enableOfflineSupport = false;
+
+    // Scene and Camera
+    var scene = new BABYLON.Scene(engine);
+    
+
+    var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
+    scene.activeCamera = camera1;
+    scene.activeCamera.attachControl(canvas, true);
+    camera1.lowerRadiusLimit = 2;
+    camera1.upperRadiusLimit = 10;
+    camera1.wheelDeltaPercentage = 0.01;
+
+    // Lights
+    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    light.intensity = 0.6;
+    light.specular = BABYLON.Color3.Black();
+
+    var light2 = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0, -0.5, -1.0), scene);
+    light2.position = new BABYLON.Vector3(0, 5, 5);    
+    
+    var isLocked = false;
+	
+	scene.onPointerDown = function (evt) 
+    {
+		if (!isLocked)
+        {
+			canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+			if (canvas.requestPointerLock)
+            {
+				canvas.requestPointerLock();
+			}
+		}
+	};
+	
+
+
+	var pointerlockchange = function () {
+		var controlEnabled = document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement || document.pointerLockElement || null;
+		
+		if (!controlEnabled) 
+        {
+			isLocked = false;
+		} 
+        else
+        {
+			isLocked = true;
+		}
+	};
+
+
+
+    var inputMap = {};
+    scene.actionManager = new BABYLON.ActionManager(scene);
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+    scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
+        inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+    }));
+
+
+
+        
+        var ground = BABYLON.MeshBuilder.CreateBox("ground", {width: 75, height: 0.5, depth: 35}, scene);
+       
+        
+       var hero = new BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:0.25, capSubdivisions: 6, subdivisions:6, tessellation:36, height:2, orientation:BABYLON.Vector3.Forward()});
+       hero.position.y = 5.11;
+       var herodMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+       herodMaterial.diffuseColor  = new BABYLON.Color3(1, 0, 0);
+       hero.material = herodMaterial; 
+
+
+
+          function rand() {
+        let sign = Math.random() < 0.5;
+        return Math.random() * (sign ? 1 : -1);
+    }
+
+    function ballPosition(ball) {
+        ball.position.y = 2.1;
+        ball.position.x = rand() * 50;
+        ball.position.z = rand() * 50;
+    }
+
+    let ball = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 2, segments: 4}, scene);
+    ball.position.y = 10;
+        ball.position.x = 2;
+        ball.position.z = 2;
+    let balll = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 2, segments: 4}, scene);
+    balll.position.y = 1.5;
+        balll.position.x = 2;
+        balll.position.z = 2.3;    
+    let balls = [ball,balll];
+
+    let x = 0
+    for(let i = 0; i < 10; ++i) {
+        let b = ball.clone("ball" + x);
+        ball.position.y = 20;
+        ball.position.x = i*2+5;
+        ball.position.z = -10;
+        balls.push(b);
+        x = x+1
+        
+        b = ball.clone("ball" + x);
+        ball.position.y = 1.5;
+        ball.position.x = i*2+5;
+        ball.position.z = -10.3;
+        balls.push(b);
+        x = x+1
+    }  
+    
+    for(let j = -9; j < -3; ++j) {
+    for(let i = -9; i < -3; ++i) {
+    for(let k = 30; k < 35; ++k) {
+        let b = ball.clone("ball" + x);
+        ball.position.y = k*2+5;
+        ball.position.x = i*2+5;
+        ball.position.z = j*2+5;
+        balls.push(b);
+        x = x+1  } 
+        
+        b = ball.clone("ball" + x);
+        ball.position.y = 1.5;
+        ball.position.x = i*2+5;
+        ball.position.z = j*2+5.3;
+        balls.push(b);
+        x = x+1
+    }}
+    
+
+        //Lock camera on the character 
+        camera1.target = hero;
+
+        //Hero character variables 
+        var heroSpeed = 0;
+        var heroSpeedBackwards = 0.1;
+        var heroRotationSpeed = 0.01;
+
+        var vektor = new BABYLON.Vector3(0, 1, 0);
+        var vektor1 = new BABYLON.Vector3(0, -1, 0); 
+        
+        scene.onPointerObservable.add((pointerInfo) => {
+		switch (pointerInfo.type) {
+			case BABYLON.PointerEventTypes.POINTERWHEEL:
+                if(pointerInfo.event.deltaY < 0)
+                {
+                    if(heroSpeed < 0.2)
+                    {
+                         heroSpeed = heroSpeed+0.1
+                    }
+                }
+                else if (pointerInfo.event.deltaY > 0)
+                {
+                    if(heroSpeed > -0.2)
+                    {
+                         heroSpeed = heroSpeed - 0.1
+                    }
+                }
+            break;
+        }
+    });
+         let rychlosti = [Math.random() / 5];
+         for (let i = 0; i < 500; i++) {
+              rychlosti.push(Math.random() / 5); 
+        } 
+        
+        let index_detekce = 0;   
+        
+        //Rendering loop (executed for everyframe)
+        scene.onBeforeRenderObservable.add(() => {   
+            let x = 0;
+
+     
+                   
+                 
+            hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));     //xxxxxxxxxxxxxx
+            var keydown = false;
+           
+           
+            if (inputMap["a"]) {
+                hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
+          
+                keydown = true;
+            }
+            if (inputMap["d"]) {
+                hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+           
+                keydown = true;
+            }
+            if (inputMap["s"]) {
+           
+            hero.moveWithCollisions(hero.up.scaleInPlace(-heroSpeedBackwards));
+                keydown = true;
+            }
+            if (inputMap["w"]) {
+           
+            hero.moveWithCollisions(hero.up.scaleInPlace(heroSpeedBackwards));
+                keydown = true;
+            }
+                   
+            
+            
+            //xxxxxxxxxxxxxx
+            if (inputMap["g"]) {
+                index_detekce = 0; index_pole = 0;  console.log("Alg s vestavenou funkci");
+                keydown = true;
+            }
+            if (inputMap["h"]) {
+                index_detekce = 1; index_pole = 0;  console.log("Alg s nejvetsim rozmerem");
+                keydown = true;
+            }
+            if (inputMap["j"]) {
+                index_detekce = 2; index_pole = 0;   console.log("Alg s AABB");
+                keydown = true;
+            }
+            if (inputMap["k"]) {
+                index_detekce = 3; index_pole = 0;   console.log("Alg s FaceT a pocitadlem vzdalenosti");
+                keydown = true;
+            }
+            if (inputMap["l"]) {
+                index_detekce = 4; index_pole = 0;   console.log("Alg s OBB");
+                keydown = true;
+            }
+            if (inputMap["p"]) {
+                index_detekce = 5; index_pole = 0;   console.log("Alg s FaceT a vektory");
+                keydown = true;
+            }
+            if (inputMap["o"]) {
+                index_detekce = 6; index_pole = 0;   console.log("Alg s OBB a per triangle");
+                keydown = true;
+            }
+            if (inputMap["i"]) {
+                index_detekce = 7; index_pole = 0;   console.log("Alg s FaceT a per triangle");
+                keydown = true;
+            }
+            //xxxxxxxxxxxxxxxx
+
+        for (let x = 0; x < scene.meshes.length; x++) 
+        {
+            scene.meshes[x].updateFacetData();  
+        }
+      //  hero.material.emissiveColor = new BABYLON.Color3(1, 1, 1); 
+        
+        var vzdalenost0 = -1;
+        var pocet_kolizi = 0;
+        let timee = performance.now();  
+        
+        for (var prvni_index = 0; prvni_index < scene.meshes.length; prvni_index++) 
+        {
+        for (var druhy_index = prvni_index+1; druhy_index < scene.meshes.length; druhy_index++) 
+        {                                        
+        
+        if(index_detekce == 0)  //g
+        { 
+            if (scene.meshes[prvni_index].intersectsMesh(scene.meshes[druhy_index], true)) {
+                pocet_kolizi = pocet_kolizi+1;
+           //     hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            } 
+
+        }
+        else if(index_detekce == 1)    //h
+        {   
+            
+            var posx = scene.meshes[prvni_index].position.x - scene.meshes[druhy_index].position.x;
+            var posy = scene.meshes[prvni_index].position.y - scene.meshes[druhy_index].position.y;
+            var posz = scene.meshes[prvni_index].position.z - scene.meshes[druhy_index].position.z;
+            var vzdalenost = Math.sqrt(posx*posx + posy*posy + posz*posz); 
+                 
+            var rozmer_herox = scene.meshes[prvni_index].getBoundingInfo().maximum["x"] ;
+            var rozmer_heroy = scene.meshes[prvni_index].getBoundingInfo().maximum["y"] ;
+            var rozmer_heroz = scene.meshes[prvni_index].getBoundingInfo().maximum["z"] ;
+            
+            var rozmer_groundx = scene.meshes[druhy_index].getBoundingInfo().maximum["x"];
+            var rozmer_groundy = scene.meshes[druhy_index].getBoundingInfo().maximum["y"];
+            var rozmer_groundz = scene.meshes[druhy_index].getBoundingInfo().maximum["z"];
+            
+            var rozmer = Math.sqrt(rozmer_herox*rozmer_herox + rozmer_heroy*rozmer_heroy + rozmer_heroz*rozmer_heroz)+Math.sqrt(rozmer_groundx*rozmer_groundx + rozmer_groundy*rozmer_groundy + rozmer_groundz*rozmer_groundz); 
+
+            if(rozmer >= vzdalenost)
+            {
+                pocet_kolizi = pocet_kolizi+1;
+           //     hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            }
+            
+        }
+        else if(index_detekce == 2)    // j
+        {   
+            var posx = scene.meshes[prvni_index].position.x - scene.meshes[druhy_index].position.x;
+            var posy = scene.meshes[prvni_index].position.y - scene.meshes[druhy_index].position.y;
+            var posz = scene.meshes[prvni_index].position.z - scene.meshes[druhy_index].position.z;
+            
+            if(posx<0){posx = posx*-1}
+            if(posy<0){posy = posy*-1}
+            if(posz<0){posz = posz*-1}
+            
+            var rozmer_herox = scene.meshes[prvni_index].getBoundingInfo().maximum["x"] ;
+            var rozmer_heroy = scene.meshes[prvni_index].getBoundingInfo().maximum["y"] ;
+            var rozmer_heroz = scene.meshes[prvni_index].getBoundingInfo().maximum["z"] ;
+            
+            var rozmer_groundx = scene.meshes[druhy_index].getBoundingInfo().maximum["x"];
+            var rozmer_groundy = scene.meshes[druhy_index].getBoundingInfo().maximum["y"];
+            var rozmer_groundz = scene.meshes[druhy_index].getBoundingInfo().maximum["z"];
+            
+            //xxxxxxxxxxxxxxxxxxxxxxxxxxx
+            var euler_ground = scene.meshes[druhy_index].rotationQuaternion.toEulerAngles();
+            
+            var pripona_ground = Math.sqrt(rozmer_groundx*rozmer_groundx  +  rozmer_groundy*rozmer_groundy);
+            
+            var uhelx_ground = Math.asin(rozmer_groundx/pripona_ground);
+            
+            rozmer_groundx = pripona_ground * Math.sin(euler_ground.z + uhelx_ground);
+            rozmer_groundy = pripona_ground * Math.cos(euler_ground.z + uhelx_ground);
+            
+            if(rozmer_groundx<0){rozmer_groundx=rozmer_groundx*-1}
+            if(rozmer_groundy<0){rozmer_groundy=rozmer_groundy*-1}
+            
+            //xxxxxxxxxxxxxxxxxxxxxxx
+            
+            pripona_ground = Math.sqrt(rozmer_groundx*rozmer_groundx  +  rozmer_groundz*rozmer_groundz);
+            
+            var uhelz_ground = Math.asin(rozmer_groundz/pripona_ground);
+            
+            rozmer_groundz = pripona_ground * Math.sin(euler_ground.y + uhelz_ground);
+            rozmer_groundx = pripona_ground * Math.cos(euler_ground.y + uhelz_ground);
+            
+            if(rozmer_groundx<0){rozmer_groundx=rozmer_groundx*-1}
+            if(rozmer_groundz<0){rozmer_groundz=rozmer_groundz*-1}
+            
+            //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            
+            pripona_ground = Math.sqrt(rozmer_groundz*rozmer_groundz  +  rozmer_groundy*rozmer_groundy);
+            
+            var uhely_ground = Math.asin(rozmer_groundy/pripona_ground);
+            
+            rozmer_groundy = pripona_ground * Math.sin(euler_ground.x + uhely_ground);
+            rozmer_groundz = pripona_ground * Math.cos(euler_ground.x + uhely_ground);
+            
+            if(rozmer_groundy<0){rozmer_groundy=rozmer_groundy*-1}
+            if(rozmer_groundz<0){rozmer_groundz=rozmer_groundz*-1}
+            
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            var euler_hero = scene.meshes[prvni_index].rotationQuaternion.toEulerAngles()
+            var pripona_hero = Math.sqrt(rozmer_herox*rozmer_herox  +  rozmer_heroy*rozmer_heroy);
+            var uhelx_hero = Math.asin(rozmer_herox/pripona_hero);
+            rozmer_herox = pripona_hero * Math.sin(euler_hero.z + uhelx_hero);
+            rozmer_heroy = pripona_hero * Math.cos(euler_hero.z + uhelx_hero);
+            if(rozmer_herox<0){rozmer_herox=rozmer_herox*-1}
+            if(rozmer_heroy<0){rozmer_heroy=rozmer_heroy*-1}
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            pripona_hero = Math.sqrt(rozmer_herox*rozmer_herox  +  rozmer_heroz*rozmer_heroz);
+            var uhelz_hero = Math.asin(rozmer_heroz/pripona_hero);
+            rozmer_heroz = pripona_hero * Math.sin(euler_hero.y + uhelz_hero);
+            rozmer_herox = pripona_hero * Math.cos(euler_hero.y + uhelz_hero);
+            if(rozmer_herox<0){rozmer_herox=rozmer_herox*-1}
+            if(rozmer_heroz<0){rozmer_heroz=rozmer_heroz*-1}
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            pripona_hero = Math.sqrt(rozmer_heroz*rozmer_heroz  +  rozmer_heroy*rozmer_heroy);
+            var uhely_hero = Math.asin(rozmer_heroy/pripona_hero);
+            rozmer_heroy = pripona_hero * Math.sin(euler_hero.x + uhely_hero);
+            rozmer_heroz = pripona_hero * Math.cos(euler_hero.x + uhely_hero);
+            if(rozmer_heroy<0){rozmer_heroy=rozmer_heroy*-1}
+            if(rozmer_heroz<0){rozmer_heroz=rozmer_heroz*-1} 
+            //yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            
+            var rozmerx = rozmer_herox + rozmer_groundx;
+            var rozmery = rozmer_heroy + rozmer_groundy;
+            var rozmerz = rozmer_heroz + rozmer_groundz;
+            
+            
+            if ((posx <= rozmerx && posy <= rozmery && posz <= rozmerz)) 
+            {
+            //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);   
+               pocet_kolizi = pocet_kolizi+1;
+            }        
+        } 
+                
+        else if(index_detekce == 3)  //k
+        {
+            let rozmer_groundx = scene.meshes[druhy_index].getBoundingInfo().maximum["x"];
+            let rozmer_groundy = scene.meshes[druhy_index].getBoundingInfo().maximum["y"];
+            let rozmer_groundz = scene.meshes[druhy_index].getBoundingInfo().maximum["z"];                
+
+            let rozloha_ground = (rozmer_groundx*rozmer_groundy + rozmer_groundy*rozmer_groundz + rozmer_groundz*rozmer_groundx)*2;
+            var ground_pridani = Math.ceil(scene.meshes[druhy_index].facetNb / (rozloha_ground*10));
+            
+            let rozmer_herox = scene.meshes[prvni_index].getBoundingInfo().maximum["x"] ;
+            let rozmer_heroy = scene.meshes[prvni_index].getBoundingInfo().maximum["y"] ;
+            let rozmer_heroz = scene.meshes[prvni_index].getBoundingInfo().maximum["z"] ;
+            
+            let rozloha_hero = (rozmer_herox*rozmer_heroy + rozmer_heroy*rozmer_heroz + rozmer_heroz*rozmer_herox)*2;
+            var hero_pridani = Math.ceil(scene.meshes[prvni_index].facetNb / (rozloha_hero*10));
+            
+
+        
+            if(optimalizacni_funkce(scene.meshes[prvni_index], scene.meshes[druhy_index]) == true)
+            {           
+            ///////////////
+            var dotyk = 0;
+            
+            for(let x = 0; x < scene.meshes[druhy_index].facetNb; x=x+ground_pridani)
+            {
+                for(let y = 0; y < scene.meshes[prvni_index].facetNb; y=y+hero_pridani)
+                {
+                    var poshero = scene.meshes[prvni_index].getFacetPosition(y);
+                    var posground = scene.meshes[druhy_index].getFacetPosition(x);
+                    var dX = poshero["x"] - posground["x"];
+                    var dY = poshero["y"] - posground["y"];
+                    var dZ = poshero["z"] - posground["z"]; 
+                    var vzdalenost = dX * dX + dY * dY + dZ * dZ;
+ 
+                    if(vzdalenost < 0.25)
+                    {
+                        pocet_kolizi = pocet_kolizi+1;
+                //        hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                        dotyk = 1;
+                        break;
+                    }
+
+                }
+                if(dotyk == 1){break;}
+            }
+ 
+            }
+   
+        }   
+        else if(index_detekce == 4)  //l
+        {
+            var indexL1 = prvni_index;
+            var indexL2 = druhy_index;
+      
+            for (let i = 0; i < 2; i++) 
+            {
+
+            var rozmer_herox = scene.meshes[indexL1].getBoundingInfo().maximum["x"] ;
+            var rozmer_heroy = scene.meshes[indexL1].getBoundingInfo().maximum["y"] ;
+            var rozmer_heroz = scene.meshes[indexL1].getBoundingInfo().maximum["z"] ;
+            
+            var rozmer_groundx = scene.meshes[indexL2].getBoundingInfo().maximum["x"];
+            var rozmer_groundy = scene.meshes[indexL2].getBoundingInfo().maximum["y"];
+            var rozmer_groundz = scene.meshes[indexL2].getBoundingInfo().maximum["z"];
+        
+            var hero_hrana0 = [scene.meshes[indexL1].position.x - rozmer_herox, scene.meshes[indexL1].position.y - rozmer_heroy, scene.meshes[indexL1].position.z - rozmer_heroz];
+            var hero_hrana1 = [scene.meshes[indexL1].position.x - rozmer_herox, scene.meshes[indexL1].position.y - rozmer_heroy,  scene.meshes[indexL1].position.z + rozmer_heroz];
+            var hero_hrana2 = [scene.meshes[indexL1].position.x - rozmer_herox,  scene.meshes[indexL1].position.y + rozmer_heroy, scene.meshes[indexL1].position.z - rozmer_heroz];
+            var hero_hrana3 = [scene.meshes[indexL1].position.x - rozmer_herox,  scene.meshes[indexL1].position.y + rozmer_heroy,  scene.meshes[indexL1].position.z + rozmer_heroz];
+            var hero_hrana4 = [ scene.meshes[indexL1].position.x + rozmer_herox, scene.meshes[indexL1].position.y - rozmer_heroy, scene.meshes[indexL1].position.z - rozmer_heroz];
+            var hero_hrana5 = [ scene.meshes[indexL1].position.x + rozmer_herox, scene.meshes[indexL1].position.y - rozmer_heroy,  scene.meshes[indexL1].position.z + rozmer_heroz];
+            var hero_hrana6 = [ scene.meshes[indexL1].position.x + rozmer_herox, scene.meshes[indexL1].position.y + rozmer_heroy, scene.meshes[indexL1].position.z - rozmer_heroz];
+            var hero_hrana7 = [ scene.meshes[indexL1].position.x + rozmer_herox, scene.meshes[indexL1].position.y + rozmer_heroy,  scene.meshes[indexL1].position.z + rozmer_heroz];
+            var hero_hrany = [hero_hrana0, hero_hrana1, hero_hrana2, hero_hrana3, hero_hrana4, hero_hrana5, hero_hrana6, hero_hrana7];
+            
+            var ground_hrana0 = [scene.meshes[indexL2].position.x - rozmer_groundx, scene.meshes[indexL2].position.y - rozmer_groundy, scene.meshes[indexL2].position.z - rozmer_groundz];
+            var ground_hrana1 = [scene.meshes[indexL2].position.x - rozmer_groundx, scene.meshes[indexL2].position.y - rozmer_groundy,  scene.meshes[indexL2].position.z + rozmer_groundz];
+            var ground_hrana2 = [scene.meshes[indexL2].position.x - rozmer_groundx,  scene.meshes[indexL2].position.y + rozmer_groundy, scene.meshes[indexL2].position.z - rozmer_groundz];
+            var ground_hrana3 = [scene.meshes[indexL2].position.x - rozmer_groundx,  scene.meshes[indexL2].position.y + rozmer_groundy,  scene.meshes[indexL2].position.z + rozmer_groundz];
+            var ground_hrana4 = [ scene.meshes[indexL2].position.x + rozmer_groundx, scene.meshes[indexL2].position.y - rozmer_groundy, scene.meshes[indexL2].position.z - rozmer_groundz];
+            var ground_hrana5 = [ scene.meshes[indexL2].position.x + rozmer_groundx, scene.meshes[indexL2].position.y - rozmer_groundy,  scene.meshes[indexL2].position.z + rozmer_groundz];
+            var ground_hrana6 = [ scene.meshes[indexL2].position.x + rozmer_groundx, scene.meshes[indexL2].position.y + rozmer_groundy, scene.meshes[indexL2].position.z - rozmer_groundz];
+            var ground_hrana7 = [ scene.meshes[indexL2].position.x + rozmer_groundx, scene.meshes[indexL2].position.y + rozmer_groundy,  scene.meshes[indexL2].position.z + rozmer_groundz];
+            var ground_hrany = [ground_hrana0, ground_hrana1, ground_hrana2, ground_hrana3, ground_hrana4, ground_hrana5, ground_hrana6, ground_hrana7];
+
+           if(rotace_pro_5_alg(scene.meshes[indexL1], hero_hrany, scene.meshes[indexL2], ground_hrany) == 1)
+           {
+            //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                pocet_kolizi = pocet_kolizi+1;
+                break;
+           } 
+           else
+           {
+                let zaloha_index = indexL1;
+                indexL1 = indexL2;
+                indexL2 = zaloha_index;
+           }           
+           
+            } 
+            
+        }
+        else if(index_detekce == 5)  //p
+        {     
+            var hero_hrany = [];
+            var ground_hrany = [];
+            
+            for(let x = 0; x < scene.meshes[druhy_index].facetNb; x=x+20)
+            {   
+                var posground = scene.meshes[druhy_index].getFacetPosition(x);
+                ground_hrany.push([posground["x"], posground["y"], posground["z"]]);
+                
+            }
+            
+            for(let y = 0; y < scene.meshes[prvni_index].facetNb; y=y+20)
+            {
+                var poshero = scene.meshes[prvni_index].getFacetPosition(y);
+                hero_hrany.push([poshero["x"], poshero["y"], poshero["z"]]);
+            }
+            
+ 
+            var dotyk = 0;            
+            for(let x = 0; x < hero_hrany.length; x++)
+            { 
+                let xy_kladny = 0; let xy_zaporny = 0;  
+                let yz_kladny = 0; let yz_zaporny = 0;  
+                let zx_kladny = 0; let zx_zaporny = 0;
+                
+                let xy_mix12 = 0; let xy_mix21 = 0;  
+                let yz_mix12 = 0; let yz_mix21 = 0;  
+                let zx_mix12 = 0; let zx_mix21 = 0; 
+                 
+                let x_vzdalenost = 0;  let y_vzdalenost = 0;  let z_vzdalenost = 0;
+                
+                for(let y = 0; y < ground_hrany.length; y++)  
+                { 
+                    let xx = ground_hrany[y][0] - hero_hrany[x][0];
+                    let yy = ground_hrany[y][1] - hero_hrany[x][1];
+                    let zz = ground_hrany[y][2] - hero_hrany[x][2];
+                    
+                    if(xx > 0 && yy > 0){ xy_kladny = 1; }
+                    if(yy > 0 && zz > 0){ yz_kladny = 1; }
+                    if(zz > 0 && xx > 0){ zx_kladny = 1; }
+                    if(xx < 0 && yy < 0){ xy_zaporny = 1; }
+                    if(yy < 0 && zz < 0){ yz_zaporny = 1; }
+                    if(zz < 0 && xx < 0){ zx_zaporny = 1; }
+                    
+                    if(xx > 0 && yy < 0){ xy_mix12 = 1; }
+                    if(yy > 0 && zz < 0){ yz_mix12 = 1; }
+                    if(zz > 0 && xx < 0){ zx_mix12 = 1; }
+                    if(xx < 0 && yy > 0){ xy_mix21 = 1; }
+                    if(yy < 0 && zz > 0){ yz_mix21 = 1; }
+                    if(zz < 0 && xx > 0){ zx_mix21 = 1; } 
+                    
+                                        
+                    if(xx < 0.2 && xx > -0.2){ x_vzdalenost = 1; }
+                    if(yy < 0.2 && yy > -0.2){ y_vzdalenost = 1; }
+                    if(zz < 0.2 && zz > -0.2){ z_vzdalenost = 1; }                                                                                
+                    
+                    if(xy_kladny == 1 && xy_zaporny == 1 && xy_mix12 == 1 && xy_mix21 == 1 && z_vzdalenost == 1)
+                    {
+                   //     hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);  
+                        pocet_kolizi = pocet_kolizi+1;    dotyk = 1;   break;
+                    }
+                    if(yz_kladny == 1 && yz_zaporny == 1 && yz_mix12 == 1 && yz_mix21 == 1 && x_vzdalenost == 1)    
+                    {
+                 //      hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0); 
+                        pocet_kolizi = pocet_kolizi+1;  dotyk = 1;     break;
+                    }
+                    if(zx_kladny == 1 && zx_zaporny == 1 && zx_mix12 == 1 && zx_mix21 == 1 && y_vzdalenost == 1)    
+                    {
+                   //     hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);   
+                        pocet_kolizi = pocet_kolizi+1;   dotyk = 1;   break;
+                    }    
+                       
+                }
+                if(dotyk == 1)
+                {  break;}                
+                                                                
+            } 
+            
+            if(dotyk == 0)
+            {
+            for(let x = 0; x < ground_hrany.length; x++)
+            { 
+                let xy_kladny = 0; let xy_zaporny = 0;  
+                let yz_kladny = 0; let yz_zaporny = 0;  
+                let zx_kladny = 0; let zx_zaporny = 0;
+                
+                let xy_mix12 = 0; let xy_mix21 = 0;  
+                let yz_mix12 = 0; let yz_mix21 = 0;  
+                let zx_mix12 = 0; let zx_mix21 = 0; 
+                 
+                let x_vzdalenost = 0;  let y_vzdalenost = 0;  let z_vzdalenost = 0;
+                
+                for(let y = 0; y < hero_hrany.length; y++)  
+                { 
+                    let xx = hero_hrany[y][0] - ground_hrany[x][0];
+                    let yy = hero_hrany[y][1] - ground_hrany[x][1];
+                    let zz = hero_hrany[y][2] - ground_hrany[x][2];
+                    
+                    if(xx > 0 && yy > 0){ xy_kladny = 1; }
+                    if(yy > 0 && zz > 0){ yz_kladny = 1; }
+                    if(zz > 0 && xx > 0){ zx_kladny = 1; }
+                    if(xx < 0 && yy < 0){ xy_zaporny = 1; }
+                    if(yy < 0 && zz < 0){ yz_zaporny = 1; }
+                    if(zz < 0 && xx < 0){ zx_zaporny = 1; }
+                    
+                    if(xx > 0 && yy < 0){ xy_mix12 = 1; }
+                    if(yy > 0 && zz < 0){ yz_mix12 = 1; }
+                    if(zz > 0 && xx < 0){ zx_mix12 = 1; }
+                    if(xx < 0 && yy > 0){ xy_mix21 = 1; }
+                    if(yy < 0 && zz > 0){ yz_mix21 = 1; }
+                    if(zz < 0 && xx > 0){ zx_mix21 = 1; } 
+                    
+                                        
+                    if(xx < 0.5 && xx > -0.5){ x_vzdalenost = 1; }
+                    if(yy < 0.5 && yy > -0.5){ y_vzdalenost = 1; }
+                    if(zz < 0.5 && zz > -0.5){ z_vzdalenost = 1; }                                                                                
+                    
+                    if(xy_kladny == 1 && xy_zaporny == 1 && xy_mix12 == 1 && xy_mix21 == 1 && z_vzdalenost == 1)
+                    {
+                    //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0); 
+                         pocet_kolizi = pocet_kolizi+1;  dotyk = 1;   break;
+                    }
+                    if(yz_kladny == 1 && yz_zaporny == 1 && yz_mix12 == 1 && yz_mix21 == 1 && x_vzdalenost == 1)    
+                    {
+                    //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0); 
+                        pocet_kolizi = pocet_kolizi+1;   dotyk = 1;   break; 
+                    }
+                    if(zx_kladny == 1 && zx_zaporny == 1 && zx_mix12 == 1 && zx_mix21 == 1 && y_vzdalenost == 1)  
+                    {
+                    //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);  
+                         pocet_kolizi = pocet_kolizi+1;   dotyk = 1;   break;
+                    }                                                                                                 
+                       
+                }
+                
+                if(dotyk == 1)
+                {  break;}                                
+                
+            }   
+            }                        
+            
+        } 
+        else if(index_detekce == 6)  //o
+        {
+            if(optimalizacni_funkce(scene.meshes[prvni_index], scene.meshes[druhy_index]) == true)
+            {
+            
+            var rozmer_herox = scene.meshes[prvni_index].getBoundingInfo().maximum["x"] ;
+            var rozmer_heroy = scene.meshes[prvni_index].getBoundingInfo().maximum["y"] ;
+            var rozmer_heroz = scene.meshes[prvni_index].getBoundingInfo().maximum["z"] ;
+            
+            var rozmer_groundx = scene.meshes[druhy_index].getBoundingInfo().maximum["x"];
+            var rozmer_groundy = scene.meshes[druhy_index].getBoundingInfo().maximum["y"];
+            var rozmer_groundz = scene.meshes[druhy_index].getBoundingInfo().maximum["z"];
+        
+            var hero_hrana0 = [scene.meshes[prvni_index].position.x - rozmer_herox, scene.meshes[prvni_index].position.y - rozmer_heroy, scene.meshes[prvni_index].position.z - rozmer_heroz];
+            var hero_hrana1 = [scene.meshes[prvni_index].position.x - rozmer_herox, scene.meshes[prvni_index].position.y - rozmer_heroy,  scene.meshes[prvni_index].position.z + rozmer_heroz];
+            var hero_hrana2 = [scene.meshes[prvni_index].position.x - rozmer_herox,  scene.meshes[prvni_index].position.y + rozmer_heroy, scene.meshes[prvni_index].position.z - rozmer_heroz];
+            var hero_hrana3 = [scene.meshes[prvni_index].position.x - rozmer_herox,  scene.meshes[prvni_index].position.y + rozmer_heroy,  scene.meshes[prvni_index].position.z + rozmer_heroz];
+            var hero_hrana4 = [ scene.meshes[prvni_index].position.x + rozmer_herox, scene.meshes[prvni_index].position.y - rozmer_heroy, scene.meshes[prvni_index].position.z - rozmer_heroz];
+            var hero_hrana5 = [ scene.meshes[prvni_index].position.x + rozmer_herox, scene.meshes[prvni_index].position.y - rozmer_heroy,  scene.meshes[prvni_index].position.z + rozmer_heroz];
+            var hero_hrana6 = [ scene.meshes[prvni_index].position.x + rozmer_herox, scene.meshes[prvni_index].position.y + rozmer_heroy, scene.meshes[prvni_index].position.z - rozmer_heroz];
+            var hero_hrana7 = [ scene.meshes[prvni_index].position.x + rozmer_herox, scene.meshes[prvni_index].position.y + rozmer_heroy,  scene.meshes[prvni_index].position.z + rozmer_heroz];
+            var hero_hrany = [hero_hrana0, hero_hrana1, hero_hrana2, hero_hrana3, hero_hrana4, hero_hrana5, hero_hrana6, hero_hrana7];
+            
+            var ground_hrana0 = [scene.meshes[druhy_index].position.x - rozmer_groundx, scene.meshes[druhy_index].position.y - rozmer_groundy, scene.meshes[druhy_index].position.z - rozmer_groundz];
+            var ground_hrana1 = [scene.meshes[druhy_index].position.x - rozmer_groundx, scene.meshes[druhy_index].position.y - rozmer_groundy,  scene.meshes[druhy_index].position.z + rozmer_groundz];
+            var ground_hrana2 = [scene.meshes[druhy_index].position.x - rozmer_groundx,  scene.meshes[druhy_index].position.y + rozmer_groundy, scene.meshes[druhy_index].position.z - rozmer_groundz];
+            var ground_hrana3 = [scene.meshes[druhy_index].position.x - rozmer_groundx,  scene.meshes[druhy_index].position.y + rozmer_groundy,  scene.meshes[druhy_index].position.z + rozmer_groundz];
+            var ground_hrana4 = [ scene.meshes[druhy_index].position.x + rozmer_groundx, scene.meshes[druhy_index].position.y - rozmer_groundy, scene.meshes[druhy_index].position.z - rozmer_groundz];
+            var ground_hrana5 = [ scene.meshes[druhy_index].position.x + rozmer_groundx, scene.meshes[druhy_index].position.y - rozmer_groundy,  scene.meshes[druhy_index].position.z + rozmer_groundz];
+            var ground_hrana6 = [ scene.meshes[druhy_index].position.x + rozmer_groundx, scene.meshes[druhy_index].position.y + rozmer_groundy, scene.meshes[druhy_index].position.z - rozmer_groundz];
+            var ground_hrana7 = [ scene.meshes[druhy_index].position.x + rozmer_groundx, scene.meshes[druhy_index].position.y + rozmer_groundy,  scene.meshes[druhy_index].position.z + rozmer_groundz];
+            var ground_hrany = [ground_hrana0, ground_hrana1, ground_hrana2, ground_hrana3, ground_hrana4, ground_hrana5, ground_hrana6, ground_hrana7];
+            
+
+            var euler_ground = scene.meshes[druhy_index].rotationQuaternion.toEulerAngles(); 
+             
+             for (let n=0; n < hero_hrany.length; n++) 
+            {
+                hero_hrany[n][0] = hero_hrany[n][0] - scene.meshes[prvni_index].position.x;
+                hero_hrany[n][1] = hero_hrany[n][1] - scene.meshes[prvni_index].position.y;
+                hero_hrany[n][2] = hero_hrany[n][2] - scene.meshes[prvni_index].position.z;
+            }
+             
+            var euler_hero = scene.meshes[prvni_index].rotationQuaternion.toEulerAngles(); 
+            
+            var hero_sin_x = Math.sin(euler_hero.x);
+            var hero_cos_x = Math.cos(euler_hero.x);
+    
+            for (let n=0; n < hero_hrany.length; n++) 
+            {
+                let y = hero_hrany[n][1];
+                let z = hero_hrany[n][2];
+                hero_hrany[n][1] = y * hero_cos_x - z * hero_sin_x;
+                hero_hrany[n][2] = z * hero_cos_x + y * hero_sin_x;
+            }
+            
+            var hero_sin_y = Math.sin(euler_hero.y);
+            var hero_cos_y = Math.cos(euler_hero.y);
+    
+            for (let n=0; n < hero_hrany.length; n++) 
+            {
+                let x = hero_hrany[n][0];
+                var z = hero_hrany[n][2];
+                hero_hrany[n][0] = x * hero_cos_y + z * hero_sin_y;
+                hero_hrany[n][2] = z * hero_cos_y - x * hero_sin_y;
+            }
+            
+            var hero_sin_z = Math.sin(euler_hero.z);
+            var hero_cos_z = Math.cos(euler_hero.z);  
+    
+            for (let n=0; n < hero_hrany.length; n++) 
+            {
+                let x = hero_hrany[n][0];
+                let y = hero_hrany[n][1];
+                hero_hrany[n][0] = x * hero_cos_z - y * hero_sin_z;
+                hero_hrany[n][1] = y * hero_cos_z + x * hero_sin_z;
+            } 
+            
+            for (let n=0; n < hero_hrany.length; n++) 
+            {
+                hero_hrany[n][0] = hero_hrany[n][0] + scene.meshes[prvni_index].position.x;
+                hero_hrany[n][1] = hero_hrany[n][1] + scene.meshes[prvni_index].position.y;
+                hero_hrany[n][2] = hero_hrany[n][2] + scene.meshes[prvni_index].position.z;
+            }
+             
+            for (let n=0; n < ground_hrany.length; n++) 
+            {
+                ground_hrany[n][0] = ground_hrany[n][0] - scene.meshes[druhy_index].position.x;
+                ground_hrany[n][1] = ground_hrany[n][1] - scene.meshes[druhy_index].position.y;
+                ground_hrany[n][2] = ground_hrany[n][2] - scene.meshes[druhy_index].position.z;
+            }
+            
+            var ground_sin_x = Math.sin(euler_ground.x);
+            var ground_cos_x = Math.cos(euler_ground.x);
+    
+            for (let n=0; n < ground_hrany.length; n++) 
+            {
+                let y = ground_hrany[n][1];
+                let z = ground_hrany[n][2];
+                ground_hrany[n][1] = y * ground_cos_x - z * ground_sin_x;
+                ground_hrany[n][2] = z * ground_cos_x + y * ground_sin_x;
+            }
+            
+            var ground_sin_y = Math.sin(euler_ground.y);
+            var ground_cos_y = Math.cos(euler_ground.y);
+    
+            for (let n=0; n < ground_hrany.length; n++) 
+            {
+                let x = ground_hrany[n][0];
+                var z = ground_hrany[n][2];
+                ground_hrany[n][0] = x * ground_cos_y + z * ground_sin_y;
+                ground_hrany[n][2] = z * ground_cos_y - x * ground_sin_y;
+            }
+            
+            var ground_sin_z = Math.sin(euler_ground.z);
+            var ground_cos_z = Math.cos(euler_ground.z);  
+    
+            for (let n=0; n < ground_hrany.length; n++) 
+            {
+                let x = ground_hrany[n][0];
+                let y = ground_hrany[n][1];
+                ground_hrany[n][0] = x * ground_cos_z - y * ground_sin_z;
+                ground_hrany[n][1] = y * ground_cos_z + x * ground_sin_z;
+            } 
+            
+            for (let n=0; n < ground_hrany.length; n++) 
+            {
+                ground_hrany[n][0] = ground_hrany[n][0] + scene.meshes[druhy_index].position.x;
+                ground_hrany[n][1] = ground_hrany[n][1] + scene.meshes[druhy_index].position.y;
+                ground_hrany[n][2] = ground_hrany[n][2] + scene.meshes[druhy_index].position.z;
+            }
+           
+
+           var dotyk = 0;
+           const seznam_troj = [0,1,2,   1,2,3,     0,1,4,     1,4,5,     2,3,6,     3,6,7,    1,3,7,    1,5,7,    2,4,6,   0,2,4,      4,5,6,    5,6,7,      0,2,7,      0,5,7,          1,3,6,    1,4,6];
+
+           for(let x = 0; x < seznam_troj.length; x=x+3)
+            {  
+                for(let y = 0; y < seznam_troj.length; y=y+3)  
+                {
+                    var bod11 = new BABYLON.Vector3(ground_hrany[seznam_troj[x]][0], ground_hrany[seznam_troj[x]][1], ground_hrany[seznam_troj[x]][2]);
+                    var bod12 = new BABYLON.Vector3(ground_hrany[seznam_troj[x+1]][0], ground_hrany[seznam_troj[x+1]][1], ground_hrany[seznam_troj[x+1]][2]);
+                    var bod13 = new BABYLON.Vector3(ground_hrany[seznam_troj[x+2]][0], ground_hrany[seznam_troj[x+2]][1], ground_hrany[seznam_troj[x+2]][2]);
+    
+                    var bod21 = new BABYLON.Vector3(hero_hrany[seznam_troj[y]][0], hero_hrany[seznam_troj[y]][1], hero_hrany[seznam_troj[y]][2]);
+                    var bod22 = new BABYLON.Vector3(hero_hrany[seznam_troj[y+1]][0], hero_hrany[seznam_troj[y+1]][1], hero_hrany[seznam_troj[y+1]][2]);
+                    var bod23 = new BABYLON.Vector3(hero_hrany[seznam_troj[y+2]][0], hero_hrany[seznam_troj[y+2]][1], hero_hrany[seznam_troj[y+2]][2]);
+    
+                    var trojuhelnik1 = [bod11, bod12, bod13];
+                    var trojuhelnik2 = [bod21, bod22, bod23];
+    
+                    if(doTrianglesIntersect(trojuhelnik1, trojuhelnik2) == true)
+                    {
+                    //   hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0); 
+                         pocet_kolizi = pocet_kolizi+1;  dotyk = 1;   break;
+                    }                
+                }
+                if(dotyk == 1){break;}
+            }
+            if(dotyk == 0)
+            {
+            for(let x = 0; x < ground_hrany.length; x++)
+            {  
+                for(let y = 0; y < hero_hrany.length; y++)  
+                {
+                    var bod11 = new BABYLON.Vector3(ground_hrany[x][0], ground_hrany[x][1], ground_hrany[x][2]);
+                    var bod12 = new BABYLON.Vector3(ground_hrany[(x+1) % ground_hrany.length][0], ground_hrany[(x+1) % ground_hrany.length][1], ground_hrany[(x+1) % ground_hrany.length][2]);
+                    var bod13 = new BABYLON.Vector3(ground_hrany[(x+2) % ground_hrany.length][0], ground_hrany[(x+2) % ground_hrany.length][1], ground_hrany[(x+2) % ground_hrany.length][2]);
+    
+                    var bod21 = new BABYLON.Vector3(hero_hrany[y][0], hero_hrany[y][1], hero_hrany[y][2]);
+                    var bod22 = new BABYLON.Vector3(hero_hrany[(y+1) % hero_hrany.length][0], hero_hrany[(y+1) % hero_hrany.length][1], hero_hrany[(y+1) % hero_hrany.length][2]);
+                    var bod23 = new BABYLON.Vector3(hero_hrany[(y+2) % hero_hrany.length][0], hero_hrany[(y+2) % hero_hrany.length][1], hero_hrany[(y+2) % hero_hrany.length][2]);
+    
+                    var trojuhelnik1 = [bod11, bod12, bod13];
+                    var trojuhelnik2 = [bod21, bod22, bod23];
+    
+                    if(doTrianglesIntersect(trojuhelnik1, trojuhelnik2) == true)
+                    {
+                       //   hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0); 
+                          pocet_kolizi = pocet_kolizi+1;   dotyk = 1;   break;
+                    }                
+                }
+                if(dotyk == 1){break;}
+            }
+            }
+            
+            } 
+            
+        }
+        else if(index_detekce == 7)  //i
+        { 
+            if(optimalizacni_funkce(scene.meshes[prvni_index], scene.meshes[druhy_index]) == true)
+            {
+        
+            var hero_hrany = [];
+            var ground_hrany = [];
+            
+            for(let x = 0; x < scene.meshes[druhy_index].facetNb; x=x+25)
+            {   
+                var posground = scene.meshes[druhy_index].getFacetPosition(x);
+                
+                let xDist = scene.meshes[druhy_index].position.x - posground["x"];
+                let yDist = scene.meshes[druhy_index].position.y - posground["y"];
+                let zDist = scene.meshes[druhy_index].position.z - posground["z"];
+                let dist = Math.sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                let fractionOfTotal = 1 / dist;
+                posground["x"] = posground["x"] - xDist * fractionOfTotal;
+                posground["y"] = posground["y"] - yDist * fractionOfTotal;
+                posground["z"] = posground["z"] - zDist * fractionOfTotal;
+                
+                ground_hrany.push([posground["x"], posground["y"], posground["z"]]);
+                
+            }
+            
+            for(let y = 0; y < scene.meshes[prvni_index].facetNb; y=y+25)
+            {
+                var poshero = scene.meshes[prvni_index].getFacetPosition(y);
+                
+                let xDist = scene.meshes[prvni_index].position.x - poshero["x"];
+                let yDist = scene.meshes[prvni_index].position.y - poshero["y"];
+                let zDist = scene.meshes[prvni_index].position.z - poshero["z"];
+                let dist = Math.sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                let fractionOfTotal = 1 / dist;
+                poshero["x"] = poshero["x"] - xDist * fractionOfTotal;
+                poshero["y"] = poshero["y"] - yDist * fractionOfTotal;
+                poshero["z"] = poshero["z"] - zDist * fractionOfTotal;
+                
+                hero_hrany.push([poshero["x"], poshero["y"], poshero["z"]]);
+            }
+            
+ 
+            var dotyk = 0;   
+            
+            for(let x = 0; x < ground_hrany.length; x++)
+            {  
+                for(let y = 0; y < hero_hrany.length; y++)  
+                {
+                    var bod11 = new BABYLON.Vector3(ground_hrany[x][0], ground_hrany[x][1], ground_hrany[x][2]);
+                    var bod12 = new BABYLON.Vector3(ground_hrany[(x+1) % ground_hrany.length][0], ground_hrany[(x+1) % ground_hrany.length][1], ground_hrany[(x+1) % ground_hrany.length][2]);
+                    var bod13 = new BABYLON.Vector3(ground_hrany[(x+2) % ground_hrany.length][0], ground_hrany[(x+2) % ground_hrany.length][1], ground_hrany[(x+2) % ground_hrany.length][2]);
+    
+                    var bod21 = new BABYLON.Vector3(hero_hrany[y][0], hero_hrany[y][1], hero_hrany[y][2]);
+                    var bod22 = new BABYLON.Vector3(hero_hrany[(y+1) % hero_hrany.length][0], hero_hrany[(y+1) % hero_hrany.length][1], hero_hrany[(y+1) % hero_hrany.length][2]);
+                    var bod23 = new BABYLON.Vector3(hero_hrany[(y+2) % hero_hrany.length][0], hero_hrany[(y+2) % hero_hrany.length][1], hero_hrany[(y+2) % hero_hrany.length][2]);
+    
+                    var trojuhelnik1 = [bod11, bod12, bod13];
+                    var trojuhelnik2 = [bod21, bod22, bod23];
+    
+                    if(doTrianglesIntersect(trojuhelnik1, trojuhelnik2) == true)
+                    {
+                    //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);  
+                         pocet_kolizi = pocet_kolizi+1;   dotyk = 1;   break;
+                    }                
+                }
+                if(dotyk == 1){break;}
+            } 
+            if(dotyk == 0)
+            {   
+            for(let x = 0; x < ground_hrany.length; x++)
+            {  
+                for(let y = 0; y < hero_hrany.length; y++)  
+                {
+                    var bod11 = new BABYLON.Vector3(ground_hrany[x][0], ground_hrany[x][1], ground_hrany[x][2]);
+                    var bod12 = new BABYLON.Vector3(ground_hrany[(x+2) % ground_hrany.length][0], ground_hrany[(x+2) % ground_hrany.length][1], ground_hrany[(x+2) % ground_hrany.length][2]);
+                    var bod13 = new BABYLON.Vector3(ground_hrany[(x+4) % ground_hrany.length][0], ground_hrany[(x+4) % ground_hrany.length][1], ground_hrany[(x+4) % ground_hrany.length][2]);
+    
+                    var bod21 = new BABYLON.Vector3(hero_hrany[y][0], hero_hrany[y][1], hero_hrany[y][2]);
+                    var bod22 = new BABYLON.Vector3(hero_hrany[(y+2) % hero_hrany.length][0], hero_hrany[(y+2) % hero_hrany.length][1], hero_hrany[(y+2) % hero_hrany.length][2]);
+                    var bod23 = new BABYLON.Vector3(hero_hrany[(y+4) % hero_hrany.length][0], hero_hrany[(y+4) % hero_hrany.length][1], hero_hrany[(y+4) % hero_hrany.length][2]);
+    
+                    var trojuhelnik1 = [bod11, bod12, bod13];
+                    var trojuhelnik2 = [bod21, bod22, bod23];
+    
+                    if(doTrianglesIntersect(trojuhelnik1, trojuhelnik2) == true)
+                    {
+                    //    hero.material.emissiveColor = new BABYLON.Color3(1, 0, 0);  
+                       pocet_kolizi = pocet_kolizi+1;  dotyk = 1;   break;
+                    }                
+                }
+                if(dotyk == 1){break;}
+            }
+            
+            }        
+                                   
+            } 
+        } 
+        
+        }}                
+        
+        let timeee1 = performance.now();
+    
+        if(index_pole < max_pole )
+        { 
+            koliz_cas_pole[index_pole]= (timeee1-timee) + "\n";
+            pocet_kolizi_pole[index_pole]= pocet_kolizi + "\n";
+
+            index_pole = index_pole+1;
+        }
+        else
+        {
+            console.log(koliz_cas_pole +"cas");
+            console.log(pocet_kolizi_pole +"pocet kolizi");
+
+            index_pole = 0;
+        } 
+
+        });  
+        
+ 
+    
+    for (let x = 0; x < scene.meshes.length; x++) 
+    {
+        
+        let rozmer_groundx = scene.meshes[x].getBoundingInfo().maximum["x"];
+        let rozmer_groundy = scene.meshes[x].getBoundingInfo().maximum["y"];
+        let rozmer_groundz = scene.meshes[x].getBoundingInfo().maximum["z"];                
+
+        let rozloha = (rozmer_groundx*rozmer_groundy + rozmer_groundy*rozmer_groundz + rozmer_groundz*rozmer_groundx)*2;
+        var pocetface = scene.meshes[x].getIndices();
+        pocetface = pocetface.length/3;
+
+
+        while(rozloha*8 > pocetface)
+        {     
+            scene.meshes[x].increaseFacets(1);
+            pocetface = scene.meshes[x].getIndices();
+            pocetface = pocetface.length/3;      
+        } 
+    
+    }            
+    
+  
+     
+    let cannon = true;
+    let forceFactor = cannon ? 1 : 1500; 
+     
+   
+      
+      var gravityVector = new BABYLON.Vector3(0, -1, 0);
+    var physicsPlugin = new BABYLON.CannonJSPlugin(); 
+    scene.enablePhysics(gravityVector, physicsPlugin);
+     scene.broadphase = new CANNON.GridBroadphase(scene); 
+    
+    
+    hero.physicsImpostor = new BABYLON.PhysicsImpostor(hero, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0 }, scene);
+    
+
+      
+ balls.forEach(ball => {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.SphereImpostor, {mass: 1});
+    });
+    
+    ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene);
+  
+       
+
+    return scene;
+};
+
+               
+
+                var scene = createScene(); 
+
+            engine.runRenderLoop(function () { 
+                    scene.render();
+            });
+
+
+            window.addEventListener("resize", function () { 
+                    engine.resize();
+            });
+    </script>
+
+   </body>
+
+</html>
+
+
