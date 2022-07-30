@@ -1,9 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
-
+      <!--   ***********************************************************************
+     část tohoto úvodního HTML kodu byl převzat od třetí strany
+   kod pouze vytváří prázdnou Babylon.js aplikaci, něco jako Hello world aplikaci
+   je prevzatá ze stránek https://doc.babylonjs.com/start/chap1/first_app 
+   
+   prevzaty kod je rozdelen na 2 casti 
+   druha cast prevzateho kodu je na samem konci souboru -->
    <head>
       <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-      <title>Babylon Template</title>
+      <title>canon padání</title>
 
       <style>
         html, body {
@@ -45,27 +51,30 @@
            
 var createScene = function () {
 
-   
+     //konec prevzaté cásti
+  // autor všeho odtud po konec funkce createScene: Tomáš Pribyl
 
     engine.enableOfflineSupport = false;
 
-    // Scene and Camera
+    // scéna
     var scene = new BABYLON.Scene(engine); 
 
-    var camera1 = new BABYLON.ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
-    scene.activeCamera = camera1;
+    var kamera = new BABYLON.ArcRotateCamera("kamera", Math.PI / 2, Math.PI / 4, 10, new BABYLON.Vector3(0, -5, 0), scene);
+    scene.activeCamera = kamera;
     scene.activeCamera.attachControl(canvas, true);
-    camera1.lowerRadiusLimit = 2;
-    camera1.upperRadiusLimit = 10;
-    camera1.wheelDeltaPercentage = 0.01;
+    kamera.lowerRadiusLimit = 2;
+    kamera.upperRadiusLimit = 10;
+    kamera.wheelDeltaPercentage = 0.01;
 
-    // Lights
-    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
-    light.intensity = 0.6;
-    light.specular = BABYLON.Color3.Black();
+   // svetla
+    var svetlo = new BABYLON.HemisphericLight("svetlo", new BABYLON.Vector3(0, 1, 0), scene);
+    svetlo.intensity = 0.6;
+    svetlo.specular = BABYLON.Color3.Black();
 
-    var light2 = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0, -0.5, -1.0), scene);
-    light2.position = new BABYLON.Vector3(0, 5, 5);
+    var svetlo2 = new BABYLON.DirectionalLight("svetlo2", new BABYLON.Vector3(0, -0.5, -1.0), scene);
+    svetlo2.position = new BABYLON.Vector3(0, 5, 5);
+
+    // pohyb kamerou myší
 
     var isLocked = false;
 	
@@ -96,7 +105,7 @@ var createScene = function () {
 		}
 	};
 
-
+     // reakce kláves
  
     var inputMap = {};
     scene.actionManager = new BABYLON.ActionManager(scene);
@@ -107,7 +116,7 @@ var createScene = function () {
         inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
     }));
 
-
+       // vytvorení objektu
         var ground = BABYLON.MeshBuilder.CreateBox("ground", {width: 75, height: 0.5, depth: 35}, scene);
    
        var hero = new BABYLON.MeshBuilder.CreateCapsule("capsule", {radius:0.25, capSubdivisions: 6, subdivisions:6, tessellation:36, height:2, orientation:BABYLON.Vector3.Forward()});
@@ -116,15 +125,17 @@ var createScene = function () {
        herodMaterial.diffuseColor  = new BABYLON.Color3(1, 0, 0);
        hero.material = herodMaterial; 
 
-        camera1.target = hero;
-
-        //Hero character variables 
+        kamera.target = hero;
+         // nastavení pohybu kapsle
+ 
         var heroSpeed = 0;
         var heroSpeedBackwards = 0.1;
         var heroRotationSpeed = 0.01;
 
         var vektor = new BABYLON.Vector3(0, 1, 0);
         var vektor1 = new BABYLON.Vector3(0, -1, 0); 
+        
+         
         
         scene.onPointerObservable.add((pointerInfo) => {
 		switch (pointerInfo.type) {
@@ -148,7 +159,7 @@ var createScene = function () {
     });
           
         let index_detekce = 0;
-        
+         // smycka ktera reaguje na každy vytvoreny snimek simulace a predtim provede akci
         scene.onBeforeRenderObservable.add(() => {
   
             hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
@@ -182,6 +193,7 @@ var createScene = function () {
         let sign = Math.random() < 0.5;
         return Math.random() * (sign ? 1 : -1);
     }
+    // vytvoreni kouli
 
     function ballPosition(ball) {
         ball.position.y = 2.1;
@@ -235,7 +247,7 @@ var createScene = function () {
     }}
     
     
-
+     //fyzika
     let cannon = true;
     let forceFactor = cannon ? 1 : 1500; 
      
@@ -257,7 +269,10 @@ var createScene = function () {
     return scene;
 };
 
-                 
+             /*  ****************************************************
+       druha cast kodu prevzateho ze stranek doc.babylonjs.com, ktery zacina na zacatku souboru 
+       a funguje jako Hello world aplikace       
+        */      
 
                 var scene = createScene(); 
 
@@ -269,6 +284,8 @@ var createScene = function () {
             window.addEventListener("resize", function () { 
                     engine.resize();
             });
+            
+            // konec prevzate casti
     </script>
 
    </body>
